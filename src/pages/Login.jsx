@@ -19,11 +19,23 @@ const Login = () => {
       setError('Загрузка базы данных... Подождите пару секунд.');
       return;
     }
+    if (!name.trim()) {
+      setError('Введите имя пользователя');
+      return;
+    }
+    if (!password) {
+      setError('Введите пароль');
+      return;
+    }
+    if (password.length < 3) {
+      setError('Пароль слишком короткий (минимум 3 символа)');
+      return;
+    }
     setIsLoading(true);
     setError('');
 
     setTimeout(async () => {
-      if (login(name, password)) {
+      if (login(name.trim(), password)) {
         requestNotificationPermission();
         navigate('/');
       } else {

@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar
+  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle
 } from 'lucide-react';
+import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
 
 const fileToBase64 = (file) => new Promise((resolve) => {
   const reader = new FileReader();
@@ -91,14 +92,38 @@ const Orders = () => {
   const activeSelected = selectedOrder ? orders.find(o => o.id === selectedOrder.id) : null;
 
   const [newOrder, setNewOrder] = useState(EMPTY_ORDER);
+  const [errors, setErrors] = useState({});
+
+  const validateOrder = (o) => {
+    const err = {};
+    const modelErr = required(o.model, 'Модель');
+    if (modelErr) err.model = modelErr;
+    const sizeErr = required(o.size, 'Размер');
+    if (sizeErr) err.size = sizeErr;
+    const nameErr = required(o.client?.name, 'Имя клиента');
+    if (nameErr) err.clientName = nameErr;
+
+    if (o.client?.phone && !isValidPhone(o.client.phone)) {
+      err.clientPhone = 'Неверный формат телефона';
+    }
+    const priceNum = parseMoneyInput(o.price);
+    const advanceNum = parseMoneyInput(o.advance);
+    if (!priceNum || priceNum <= 0) err.price = 'Укажите цену > 0';
+    if (advanceNum > priceNum) err.advance = 'Аванс не может быть больше цены';
+    return err;
+  };
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
+    const err = validateOrder(newOrder);
+    setErrors(err);
+    if (Object.keys(err).length > 0) return;
+
     const wholesaler = newOrder.wholesalerId
       ? wholesalers.find(w => w.id === newOrder.wholesalerId) || null
       : null;
-    const priceNum = parseFloat(String(newOrder.price).replace(/[^\d.-]/g, '')) || 0;
-    const advanceNum = parseFloat(String(newOrder.advance).replace(/[^\d.-]/g, '')) || 0;
+    const priceNum = parseMoneyInput(newOrder.price);
+    const advanceNum = parseMoneyInput(newOrder.advance);
 
     await createOrder({
       ...newOrder,
@@ -110,6 +135,7 @@ const Orders = () => {
     });
     setIsAddModalOpen(false);
     setNewOrder(EMPTY_ORDER);
+    setErrors({});
   };
 
   const handleOrderPhoto = async (e) => {
@@ -148,8 +174,28 @@ const Orders = () => {
     addResponse(activeSelected.id, label, currentUser.id, currentUser.name, { type: 'reaction' });
   };
 
-  const updateField = (key, value) => setNewOrder(prev => ({ ...prev, [key]: value }));
-  const updateClient = (key, value) => setNewOrder(prev => ({ ...prev, client: { ...prev.client, [key]: value } }));
+  const updateField = (key, value) => {
+    setNewOrder(prev => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+  };
+  const updateClient = (key, value) => {
+    const v = key === 'phone' ? formatPhone(value) : value;
+    setNewOrder(prev => ({ ...prev, client: { ...prev.client, [key]: v } }));
+    const errKey = 'client' + key.charAt(0).toUpperCase() + key.slice(1);
+    if (errors[errKey]) setErrors(prev => ({ ...prev, [errKey]: null }));
+  };
+  const updatePrice = (key, value) => {
+    const formatted = formatMoneyInput(value);
+    setNewOrder(prev => ({ ...prev, [key]: formatted }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+  };
+
+  const FieldError = ({ msg }) =>
+    msg ? (
+      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+        <AlertCircle size={11} /> {msg}
+      </p>
+    ) : null;
 
   const remaining = (order) => Math.max(0, (order.price || 0) - (order.advance || 0));
 
@@ -602,24 +648,34 @@ const Orders = () => {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Модель</label>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
+                          Модель <span className="text-red-400">*</span>
+                        </label>
                         <input
                           type="text"
                           value={newOrder.model}
                           onChange={(e) => updateField('model', e.target.value)}
-                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                          className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm transition-colors ${
+                            errors.model ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                          }`}
                           placeholder="Название модели"
                         />
+                        <FieldError msg={errors.model} />
                       </div>
                       <div>
-                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Размер</label>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
+                          Размер <span className="text-red-400">*</span>
+                        </label>
                         <input
                           type="text"
                           value={newOrder.size}
                           onChange={(e) => updateField('size', e.target.value)}
-                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                          className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm transition-colors ${
+                            errors.size ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                          }`}
                           placeholder="Напр. 2050x860"
                         />
+                        <FieldError msg={errors.size} />
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Открывание</label>
@@ -678,25 +734,33 @@ const Orders = () => {
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Имя</label>
+                          <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
+                            Имя <span className="text-red-400">*</span>
+                          </label>
                           <input
-                            required
                             type="text"
                             value={newOrder.client.name}
                             onChange={(e) => updateClient('name', e.target.value)}
-                            className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                            className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm transition-colors ${
+                              errors.clientName ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                            }`}
                             placeholder="ФИО клиента"
                           />
+                          <FieldError msg={errors.clientName} />
                         </div>
                         <div>
                           <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Номер клиента</label>
                           <input
-                            type="text"
+                            type="tel"
+                            inputMode="tel"
                             value={newOrder.client.phone}
                             onChange={(e) => updateClient('phone', e.target.value)}
-                            className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
-                            placeholder="+7..."
+                            className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm transition-colors ${
+                              errors.clientPhone ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                            }`}
+                            placeholder="+7 (___) ___-__-__"
                           />
+                          <FieldError msg={errors.clientPhone} />
                         </div>
                       </div>
                       <div>
@@ -711,28 +775,34 @@ const Orders = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Цена (₽)</label>
+                          <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
+                            Цена (₽) <span className="text-red-400">*</span>
+                          </label>
                           <input
-                            type="number"
-                            min="0"
-                            step="100"
+                            type="text"
+                            inputMode="numeric"
                             value={newOrder.price}
-                            onChange={(e) => updateField('price', e.target.value)}
-                            className="w-full bg-[#e8de8c]/5 border border-[#e8de8c]/10 rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm font-semibold"
+                            onChange={(e) => updatePrice('price', e.target.value)}
+                            className={`w-full bg-[#e8de8c]/5 border rounded-xl p-3 focus:outline-none text-sm font-semibold transition-colors ${
+                              errors.price ? 'border-red-500/50 focus:border-red-500' : 'border-[#e8de8c]/10 focus:border-[#e8de8c]/30'
+                            }`}
                             placeholder="0"
                           />
+                          <FieldError msg={errors.price} />
                         </div>
                         <div>
                           <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Аванс (₽)</label>
                           <input
-                            type="number"
-                            min="0"
-                            step="100"
+                            type="text"
+                            inputMode="numeric"
                             value={newOrder.advance}
-                            onChange={(e) => updateField('advance', e.target.value)}
-                            className="w-full bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 focus:outline-none focus:border-emerald-500/30 text-sm font-semibold"
+                            onChange={(e) => updatePrice('advance', e.target.value)}
+                            className={`w-full bg-emerald-500/5 border rounded-xl p-3 focus:outline-none text-sm font-semibold transition-colors ${
+                              errors.advance ? 'border-red-500/50 focus:border-red-500' : 'border-emerald-500/10 focus:border-emerald-500/30'
+                            }`}
                             placeholder="0"
                           />
+                          <FieldError msg={errors.advance} />
                         </div>
                       </div>
                     </div>
@@ -801,7 +871,7 @@ const Orders = () => {
                   <div>
                     <p className="text-xs text-gray-500">Остаток к оплате</p>
                     <p className="text-lg font-bold">
-                      {formatMoney(Math.max(0, (parseFloat(newOrder.price) || 0) - (parseFloat(newOrder.advance) || 0)))} ₽
+                      {formatMoney(Math.max(0, parseMoneyInput(newOrder.price) - parseMoneyInput(newOrder.advance)))} ₽
                     </p>
                   </div>
                   <button

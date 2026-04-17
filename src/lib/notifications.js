@@ -13,15 +13,34 @@ export const requestNotificationPermission = async () => {
   }
 };
 
-export const showBrowserNotification = (title, options = {}) => {
-  if (!isNotificationSupported() || Notification.permission !== 'granted') return null;
+const showViaServiceWorker = async (title, options) => {
+  if (!('serviceWorker' in navigator)) return false;
   try {
-    const n = new Notification(title, {
-      icon: '/doorman-logo.png',
-      badge: '/doorman-logo.png',
-      silent: false,
-      ...options,
-    });
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return false;
+    await reg.showNotification(title, options);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const showBrowserNotification = async (title, options = {}) => {
+  if (!isNotificationSupported() || Notification.permission !== 'granted') return null;
+
+  const payload = {
+    icon: '/doorman-logo.png',
+    badge: '/doorman-logo.png',
+    vibrate: [100, 50, 100],
+    silent: false,
+    ...options,
+  };
+
+  const viaSW = await showViaServiceWorker(title, payload);
+  if (viaSW) return true;
+
+  try {
+    const n = new Notification(title, payload);
     n.onclick = () => {
       window.focus();
       n.close();

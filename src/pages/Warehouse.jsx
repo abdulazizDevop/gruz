@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Search, Package, Trash2, Edit2, X, FileDown, AlertTriangle, TrendingUp, DollarSign
+  Plus, Search, Package, Trash2, Edit2, X, FileDown, AlertTriangle, TrendingUp, DollarSign, AlertCircle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { required, positiveInteger, nonNegativeNumber, formatMoneyInput, parseMoneyInput } from '../lib/validation';
 
 const WarehousePage = () => {
   const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem } = useOrders();
@@ -13,7 +14,8 @@ const WarehousePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', qty: 0, price: 0 });
+  const [formData, setFormData] = useState({ name: '', qty: '', price: '' });
+  const [errors, setErrors] = useState({});
 
   const filteredInventory = inventory.filter(i =>
     i.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -40,16 +42,42 @@ const WarehousePage = () => {
     XLSX.writeFile(wb, `DOORMAN_Склад_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const validate = (data) => {
+    const errs = {};
+    const nameErr = required(data.name, 'Наименование');
+    if (nameErr) errs.name = nameErr;
+    const qty = parseMoneyInput(data.qty);
+    const price = parseMoneyInput(data.price);
+    const qtyErr = positiveInteger(qty, 'Количество');
+    if (qtyErr) errs.qty = qtyErr;
+    const priceErr = nonNegativeNumber(price, 'Цена');
+    if (priceErr) errs.price = priceErr;
+    return errs;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (editingItem) {
-      updateInventoryItem(editingItem.id, formData);
-    } else {
-      addInventoryItem(formData);
-    }
+    const errs = validate(formData);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    const payload = {
+      name: formData.name.trim(),
+      qty: parseMoneyInput(formData.qty),
+      price: parseMoneyInput(formData.price),
+    };
+    if (editingItem) updateInventoryItem(editingItem.id, payload);
+    else addInventoryItem(payload);
     setIsModalOpen(false);
     setEditingItem(null);
-    setFormData({ name: '', qty: 0, price: 0 });
+    setFormData({ name: '', qty: '', price: '' });
+    setErrors({});
+  };
+
+  const updateForm = (key, value) => {
+    const v = key === 'qty' || key === 'price' ? formatMoneyInput(value) : value;
+    setFormData(prev => ({ ...prev, [key]: v }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
   };
 
   const stats = [
@@ -71,7 +99,7 @@ const WarehousePage = () => {
             <FileDown size={16} /> Excel
           </button>
           <button
-            onClick={() => { setEditingItem(null); setFormData({ name: '', qty: 0, price: 0 }); setIsModalOpen(true); }}
+            onClick={() => { setEditingItem(null); setFormData({ name: '', qty: '', price: '' }); setErrors({}); setIsModalOpen(true); }}
             className="px-4 py-2.5 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors flex items-center gap-2 text-sm">
             <Plus size={16} /> Добавить товар
           </button>
@@ -132,12 +160,14 @@ const WarehousePage = () => {
                 <td className="px-5 py-4 text-sm text-gray-300 font-medium">{item.price.toLocaleString()} ₽</td>
                 <td className="px-5 py-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => { setEditingItem(item); setFormData({ name: item.name, qty: item.qty, price: item.price }); setIsModalOpen(true); }}
+                    <button onClick={() => { setEditingItem(item); setFormData({ name: item.name, qty: formatMoneyInput(item.qty), price: formatMoneyInput(item.price) }); setErrors({}); setIsModalOpen(true); }}
                       className="p-2 hover:bg-white/[0.06] rounded-lg text-gray-500 hover:text-blue-400 transition-colors">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => deleteInventoryItem(item.id)}
-                      className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors">
+                    <button
+                      onClick={() => { if (window.confirm(`Удалить товар "${item.name}"?`)) deleteInventoryItem(item.id); }}
+                      className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -163,20 +193,29 @@ const WarehousePage = () => {
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Наименование</label>
-                    <input required type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" placeholder="Напр. Дверь стальная" />
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Наименование <span className="text-red-400">*</span></label>
+                    <input type="text" value={formData.name} onChange={(e) => updateForm('name', e.target.value)}
+                      className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                        errors.name ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                      }`} placeholder="Напр. Дверь стальная" />
+                    {errors.name && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.name}</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-gray-500 font-medium mb-1 block">Количество</label>
-                      <input required type="number" value={formData.qty} onChange={(e) => setFormData({...formData, qty: parseInt(e.target.value)})}
-                        className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" />
+                      <label className="text-xs text-gray-500 font-medium mb-1 block">Количество <span className="text-red-400">*</span></label>
+                      <input type="text" inputMode="numeric" value={formData.qty} onChange={(e) => updateForm('qty', e.target.value)}
+                        className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                          errors.qty ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                        }`} placeholder="0" />
+                      {errors.qty && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.qty}</p>}
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 font-medium mb-1 block">Цена за ед.</label>
-                      <input required type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: parseInt(e.target.value)})}
-                        className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" />
+                      <label className="text-xs text-gray-500 font-medium mb-1 block">Цена за ед. (₽) <span className="text-red-400">*</span></label>
+                      <input type="text" inputMode="numeric" value={formData.price} onChange={(e) => updateForm('price', e.target.value)}
+                        className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                          errors.price ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                        }`} placeholder="0" />
+                      {errors.price && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.price}</p>}
                     </div>
                   </div>
                 </div>

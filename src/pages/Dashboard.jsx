@@ -51,7 +51,7 @@ const Dashboard = () => {
       'Клиент': o.client?.name || '',
       'Телефон': o.client?.phone || '',
       'Статус': o.status,
-      'Сумма (₽)': o.total || 0,
+      'Сумма (₽)': o.price || o.total || 0,
       'Оптовик': o.wholesaler?.name || 'Розница',
       'Дата создания': new Date(o.createdAt).toLocaleString('ru-RU'),
       'Создал': o.adminName || ''
@@ -86,8 +86,8 @@ const Dashboard = () => {
   };
 
   const visibleOrders = isSuperAdmin ? orders : orders.filter(o => o.adminId === currentUser?.id);
-  const activeSalesTotal = visibleOrders.reduce((acc, o) => acc + (o.total || 0), 0);
-  const historySalesTotal = isSuperAdmin ? salesHistory.reduce((acc, s) => acc + (s.total || 0), 0) : 0;
+  const activeSalesTotal = visibleOrders.reduce((acc, o) => acc + (o.price || o.total || 0), 0);
+  const historySalesTotal = isSuperAdmin ? salesHistory.reduce((acc, s) => acc + (s.total || s.price || 0), 0) : 0;
   const totalSales = activeSalesTotal + historySalesTotal;
   const urgentOrders = visibleOrders.filter(o => o.status?.includes('🚨')).length;
   const inProgressOrders = visibleOrders.filter(o => o.status?.includes('💭')).length;
@@ -166,7 +166,7 @@ const Dashboard = () => {
                         'bg-blue-500/10 text-blue-400'
                       }`}>{order.status}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm font-semibold">{order.total?.toLocaleString()} ₽</td>
+                    <td className="px-5 py-4 text-sm font-semibold">{(order.price || order.total || 0).toLocaleString('ru-RU')} ₽</td>
                     <td className="px-5 py-4 text-xs text-gray-500 text-right">{new Date(order.createdAt).toLocaleDateString('ru-RU')}</td>
                   </tr>
                 ))}

@@ -1,0 +1,26 @@
+{
+  "name": "DoorMan — Учёт заказов",
+  "short_name": "DoorMan",
+  "description": "Система учёта торговли входными металлическими дверями",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/doorman-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/doorman-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

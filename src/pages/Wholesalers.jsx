@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Search, User, Phone, Info, Edit2, Trash2, X, Package, TrendingUp } from 'lucide-react';
+import { Plus, Search, User, Phone, Info, Edit2, Trash2, X, Package, TrendingUp, AlertCircle } from 'lucide-react';
+import { formatPhone, isValidPhone, required, minLength } from '../lib/validation';
 
 const Wholesalers = () => {
   const { wholesalers, addWholesaler, updateWholesaler, deleteWholesaler, orders } = useOrders();
@@ -10,20 +11,45 @@ const Wholesalers = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '', info: '' });
+  const [errors, setErrors] = useState({});
 
   const filteredWholesalers = wholesalers.filter(w =>
-    w.name.toLowerCase().includes(searchTerm.toLowerCase()) || w.phone.includes(searchTerm)
+    w.name.toLowerCase().includes(searchTerm.toLowerCase()) || (w.phone || '').includes(searchTerm)
   );
+
+  const validate = (data) => {
+    const errs = {};
+    const nameErr = required(data.name, 'Имя') || minLength(data.name, 2, 'Имя');
+    if (nameErr) errs.name = nameErr;
+    const phoneErr = required(data.phone, 'Телефон');
+    if (phoneErr) errs.phone = phoneErr;
+    else if (!isValidPhone(data.phone)) errs.phone = 'Введите полный номер телефона';
+    return errs;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (editingItem) updateWholesaler(editingItem.id, formData);
-    else addWholesaler(formData);
-    setIsModalOpen(false); setEditingItem(null); setFormData({ name: '', phone: '', info: '' });
+    const errs = validate(formData);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    const payload = { ...formData, name: formData.name.trim() };
+    if (editingItem) updateWholesaler(editingItem.id, payload);
+    else addWholesaler(payload);
+    setIsModalOpen(false);
+    setEditingItem(null);
+    setFormData({ name: '', phone: '', info: '' });
+    setErrors({});
+  };
+
+  const updateForm = (key, value) => {
+    const v = key === 'phone' ? formatPhone(value) : value;
+    setFormData(prev => ({ ...prev, [key]: v }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
   };
 
   const getOrderCount = (wid) => orders.filter(o => o.wholesaler?.id === wid).length;
-  const getTotalSpent = (wid) => orders.filter(o => o.wholesaler?.id === wid).reduce((acc, o) => acc + (o.total || 0), 0);
+  const getTotalSpent = (wid) => orders.filter(o => o.wholesaler?.id === wid).reduce((acc, o) => acc + (o.price || o.total || 0), 0);
 
   return (
     <div className="space-y-6 pb-20">
@@ -32,7 +58,7 @@ const Wholesalers = () => {
           <h1 className="text-2xl font-bold tracking-tight">Оптовики</h1>
           <p className="text-gray-500 text-sm mt-1">База постоянных клиентов</p>
         </div>
-        <button onClick={() => { setEditingItem(null); setFormData({ name: '', phone: '', info: '' }); setIsModalOpen(true); }}
+        <button onClick={() => { setEditingItem(null); setFormData({ name: '', phone: '', info: '' }); setErrors({}); setIsModalOpen(true); }}
           className="px-4 py-2.5 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors flex items-center gap-2 text-sm">
           <Plus size={16} /> Добавить оптовика
         </button>
@@ -82,12 +108,14 @@ const Wholesalers = () => {
                 )}
 
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { setEditingItem(w); setFormData({ name: w.name, phone: w.phone, info: w.info }); setIsModalOpen(true); }}
+                  <button onClick={() => { setEditingItem(w); setFormData({ name: w.name, phone: formatPhone(w.phone), info: w.info || '' }); setErrors({}); setIsModalOpen(true); }}
                     className="flex-1 bg-white/[0.04] hover:bg-[#e8de8c]/10 text-xs font-medium py-2 rounded-lg transition-colors text-gray-400 hover:text-[#e8de8c] flex items-center justify-center gap-1.5">
                     <Edit2 size={12} /> Изменить
                   </button>
-                  <button onClick={() => deleteWholesaler(w.id)}
-                    className="p-2 bg-white/[0.04] hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition-colors">
+                  <button
+                    onClick={() => { if (window.confirm(`Удалить оптовика "${w.name}"?`)) deleteWholesaler(w.id); }}
+                    className="p-2 bg-white/[0.04] hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition-colors"
+                  >
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -112,18 +140,24 @@ const Wholesalers = () => {
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Имя</label>
-                    <input required type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" placeholder="ФИО" />
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Имя <span className="text-red-400">*</span></label>
+                    <input type="text" value={formData.name} onChange={(e) => updateForm('name', e.target.value)}
+                      className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                        errors.name ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                      }`} placeholder="ФИО" />
+                    {errors.name && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.name}</p>}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Телефон</label>
-                    <input required type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" placeholder="+7..." />
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Телефон <span className="text-red-400">*</span></label>
+                    <input type="tel" inputMode="tel" value={formData.phone} onChange={(e) => updateForm('phone', e.target.value)}
+                      className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                        errors.phone ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                      }`} placeholder="+7 (___) ___-__-__" />
+                    {errors.phone && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.phone}</p>}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Информация</label>
-                    <textarea value={formData.info} onChange={(e) => setFormData({...formData, info: e.target.value})}
+                    <textarea value={formData.info} onChange={(e) => updateForm('info', e.target.value)}
                       className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 h-20 resize-none text-sm" placeholder="Скидки, адрес..." />
                   </div>
                 </div>

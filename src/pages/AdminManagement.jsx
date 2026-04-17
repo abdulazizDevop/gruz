@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import {
-  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings
+  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle
 } from 'lucide-react';
+import { required, minLength } from '../lib/validation';
 
 const AdminManagement = () => {
   const { users, addUser, deleteUser, currentUser, updateSelf } = useAuth();
@@ -11,16 +12,39 @@ const AdminManagement = () => {
   const [showPasswords, setShowPasswords] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({ name: '', password: '', role: 'admin' });
+  const [formErrors, setFormErrors] = useState({});
 
   const [profileData, setProfileData] = useState({ name: currentUser?.name || '', password: '' });
   const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState('');
   const [showProfilePassword, setShowProfilePassword] = useState(false);
 
   const handleProfileSave = (e) => {
     e.preventDefault();
+    setProfileError('');
     const updates = {};
-    if (profileData.name.trim()) updates.name = profileData.name.trim();
-    if (profileData.password.trim()) updates.password = profileData.password.trim();
+    const trimmedName = profileData.name.trim();
+    const trimmedPw = profileData.password.trim();
+
+    if (trimmedName) {
+      if (trimmedName.length < 2) {
+        setProfileError('Имя: минимум 2 символа');
+        return;
+      }
+      const duplicate = users.find(u => u.id !== currentUser.id && u.name.toLowerCase() === trimmedName.toLowerCase());
+      if (duplicate) {
+        setProfileError('Имя уже занято другим сотрудником');
+        return;
+      }
+      updates.name = trimmedName;
+    }
+    if (trimmedPw) {
+      if (trimmedPw.length < 3) {
+        setProfileError('Пароль: минимум 3 символа');
+        return;
+      }
+      updates.password = trimmedPw;
+    }
     if (Object.keys(updates).length > 0) {
       updateSelf(updates);
       setProfileSuccess(true);
@@ -32,11 +56,33 @@ const AdminManagement = () => {
   const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const togglePasswordVisibility = (id) => setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
 
+  const validateNewUser = (data) => {
+    const errs = {};
+    const nameErr = required(data.name, 'Имя') || minLength(data.name, 2, 'Имя');
+    if (nameErr) errs.name = nameErr;
+    else {
+      const dup = users.find(u => u.name.toLowerCase() === data.name.trim().toLowerCase());
+      if (dup) errs.name = 'Имя уже занято';
+    }
+    const pwErr = required(data.password, 'Пароль') || minLength(data.password, 3, 'Пароль');
+    if (pwErr) errs.password = pwErr;
+    return errs;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    addUser(formData);
+    const errs = validateNewUser(formData);
+    setFormErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    addUser({ ...formData, name: formData.name.trim(), password: formData.password.trim() });
     setIsModalOpen(false);
     setFormData({ name: '', password: '', role: 'admin' });
+    setFormErrors({});
+  };
+
+  const updateForm = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    if (formErrors[key]) setFormErrors(prev => ({ ...prev, [key]: null }));
   };
 
   const getRoleIcon = (role) => {
@@ -104,7 +150,7 @@ const AdminManagement = () => {
               </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3 flex-wrap">
             <button type="submit" className="px-6 py-2.5 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl text-sm transition-colors">
               Сохранить
             </button>
@@ -112,6 +158,11 @@ const AdminManagement = () => {
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-emerald-400 text-sm font-medium">
                 Сохранено
               </motion.span>
+            )}
+            {profileError && (
+              <span className="text-red-400 text-sm font-medium flex items-center gap-1">
+                <AlertCircle size={13} /> {profileError}
+              </span>
             )}
           </div>
         </form>
@@ -166,8 +217,12 @@ const AdminManagement = () => {
                 </td>
                 <td className="px-5 py-4 text-right">
                   {u.role !== 'superadmin' && (
-                    <button onClick={() => deleteUser(u.id)}
-                      className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors">
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Удалить сотрудника "${u.name}"?`)) deleteUser(u.id);
+                      }}
+                      className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                    >
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -193,18 +248,32 @@ const AdminManagement = () => {
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Имя</label>
-                    <input required type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" placeholder="Имя сотрудника" />
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Имя <span className="text-red-400">*</span></label>
+                    <input type="text" value={formData.name} onChange={(e) => updateForm('name', e.target.value)}
+                      className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                        formErrors.name ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                      }`} placeholder="Имя сотрудника" />
+                    {formErrors.name && (
+                      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                        <AlertCircle size={11} /> {formErrors.name}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Пароль</label>
-                    <input required type="text" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" placeholder="Пароль" />
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Пароль <span className="text-red-400">*</span></label>
+                    <input type="text" value={formData.password} onChange={(e) => updateForm('password', e.target.value)}
+                      className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
+                        formErrors.password ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                      }`} placeholder="Пароль (минимум 3 символа)" />
+                    {formErrors.password && (
+                      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                        <AlertCircle size={11} /> {formErrors.password}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Роль</label>
-                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    <select value={formData.role} onChange={(e) => updateForm('role', e.target.value)}
                       className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm text-gray-300 appearance-none">
                       <option value="admin">Админ</option>
                       <option value="assembler">Сборщик</option>
