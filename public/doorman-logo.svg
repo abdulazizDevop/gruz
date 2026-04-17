@@ -1,0 +1,51 @@
+<svg viewBox="0 0 300 350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Clip for left half -->
+    <clipPath id="leftHalf">
+      <rect x="0" y="0" width="150" height="350"/>
+    </clipPath>
+    <!-- Clip for right half -->
+    <clipPath id="rightHalf">
+      <rect x="150" y="0" width="150" height="350"/>
+    </clipPath>
+    <!-- The door shape path -->
+    <path id="doorShape" d="M150,8 L28,88 L28,258 L105,320 L150,273 L195,320 L272,258 L272,88 Z"/>
+  </defs>
+
+  <!-- Right panel - filled solid -->
+  <use href="#doorShape" clip-path="url(#rightHalf)" fill="#e8de8c"/>
+
+  <!-- Left panel - outline only -->
+  <use href="#doorShape" clip-path="url(#leftHalf)" fill="none" stroke="#e8de8c" stroke-width="12" stroke-linejoin="round"/>
+
+  <!-- Letter D on LEFT side (yellow on transparent) -->
+  <text
+    clip-path="url(#leftHalf)"
+    x="88"
+    y="210"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="200"
+    font-style="italic"
+    font-weight="bold"
+    fill="#e8de8c"
+    text-anchor="middle"
+    dominant-baseline="central"
+  >D</text>
+
+  <!-- Letter D on RIGHT side (dark cutout on yellow) -->
+  <text
+    clip-path="url(#rightHalf)"
+    x="88"
+    y="210"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="200"
+    font-style="italic"
+    font-weight="bold"
+    fill="#0a0a0c"
+    text-anchor="middle"
+    dominant-baseline="central"
+  >D</text>
+
+  <!-- Doorknob -->
+  <ellipse cx="237" cy="228" rx="11" ry="13" fill="#0a0a0c"/>
+</svg>
