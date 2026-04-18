@@ -66,7 +66,7 @@ const Dashboard = () => {
     }));
     // Склад
     const inventoryData = inventory.map(i => ({
-      'Наименование товара': i.name,
+      'Наименование двери': i.name,
       'Количество (шт.)': i.qty,
       'Цена за единицу (₽)': i.price,
       'Общая стоимость (₽)': i.price * i.qty
@@ -122,7 +122,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Всего активных заказов" value={visibleOrders.length} icon={ShoppingCart} trend={12} delay={0.05} />
         <StatCard title="Общая сумма продаж" value={`${totalSales.toLocaleString()} ₽`} icon={TrendingUp} trend={8} delay={0.1} />
-        <StatCard title="Товаров на складе (шт.)" value={inventory.reduce((acc, i) => acc + i.qty, 0)} icon={Package} trend={-2} delay={0.15} />
+        <StatCard title="Дверей на складе (шт.)" value={inventory.reduce((acc, i) => acc + (i.qty || 0), 0)} icon={Package} trend={-2} delay={0.15} />
         <StatCard title="База оптовиков" value={wholesalers.length} icon={Users} trend={5} delay={0.2} />
       </div>
 

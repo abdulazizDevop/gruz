@@ -1,44 +1,54 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
-import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Search, Package, Trash2, Edit2, X, FileDown, AlertTriangle, TrendingUp, DollarSign, AlertCircle
+  Plus, Search, Package, Trash2, Edit2, X, FileDown, AlertTriangle, TrendingUp, DollarSign, AlertCircle, DoorOpen, DoorClosed
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { required, positiveInteger, nonNegativeNumber, formatMoneyInput, parseMoneyInput } from '../lib/validation';
 
+const CATEGORIES = [
+  { key: 'single', label: 'Одностворчатые', icon: DoorClosed },
+  { key: 'double', label: 'Двустворчатые', icon: DoorOpen },
+];
+
+const getItemCategory = (item) => item?.category || 'single';
+
 const WarehousePage = () => {
   const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem } = useOrders();
-  const { currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeCategory, setActiveCategory] = useState('single');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', qty: '', price: '' });
+  const [formData, setFormData] = useState({ name: '', qty: '', price: '', category: 'single' });
   const [errors, setErrors] = useState({});
 
-  const filteredInventory = inventory.filter(i =>
+  const categoryInventory = inventory.filter(i => getItemCategory(i) === activeCategory);
+  const filteredInventory = categoryInventory.filter(i =>
     i.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const catCount = (cat) => inventory.filter(i => getItemCategory(i) === cat).reduce((acc, i) => acc + (i.qty || 0), 0);
+
   const handleExportExcel = () => {
     const data = inventory.map(item => ({
-      'Наименование товара': item.name,
-      'Количество (шт.)': item.qty,
-      'Цена за единицу (₽)': item.price,
-      'Общая стоимость (₽)': item.price * item.qty
+      'Наименование двери': item.name,
+      'Полотно': CATEGORIES.find(c => c.key === getItemCategory(item))?.label || '—',
+      'Количество (шт.)': item.qty || 0,
+      'Цена за единицу (₽)': item.price || 0,
+      'Общая стоимость (₽)': (item.price || 0) * (item.qty || 0),
     }));
-    // Итоговая строка
     data.push({
-      'Наименование товара': 'ИТОГО',
-      'Количество (шт.)': inventory.reduce((acc, i) => acc + i.qty, 0),
+      'Наименование двери': 'ИТОГО',
+      'Полотно': '',
+      'Количество (шт.)': inventory.reduce((acc, i) => acc + (i.qty || 0), 0),
       'Цена за единицу (₽)': '',
-      'Общая стоимость (₽)': inventory.reduce((acc, i) => acc + (i.price * i.qty), 0)
+      'Общая стоимость (₽)': inventory.reduce((acc, i) => acc + ((i.price || 0) * (i.qty || 0)), 0),
     });
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 22 }];
+    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Склад");
+    XLSX.utils.book_append_sheet(wb, ws, 'Склад');
     XLSX.writeFile(wb, `DOORMAN_Склад_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
@@ -65,12 +75,13 @@ const WarehousePage = () => {
       name: formData.name.trim(),
       qty: parseMoneyInput(formData.qty),
       price: parseMoneyInput(formData.price),
+      category: formData.category || 'single',
     };
     if (editingItem) updateInventoryItem(editingItem.id, payload);
     else addInventoryItem(payload);
     setIsModalOpen(false);
     setEditingItem(null);
-    setFormData({ name: '', qty: '', price: '' });
+    setFormData({ name: '', qty: '', price: '', category: activeCategory });
     setErrors({});
   };
 
@@ -80,10 +91,47 @@ const WarehousePage = () => {
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
   };
 
-  const stats = [
-    { label: 'Всего наименований на складе', value: inventory.length, icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Общая стоимость остатков', value: `${inventory.reduce((acc, i) => acc + (i.price * i.qty), 0).toLocaleString()} ₽`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { label: 'Общее количество товаров (шт.)', value: inventory.reduce((acc, i) => acc + i.qty, 0), icon: TrendingUp, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+  const openAdd = () => {
+    setEditingItem(null);
+    setFormData({ name: '', qty: '', price: '', category: activeCategory });
+    setErrors({});
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (item) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      qty: formatMoneyInput(item.qty),
+      price: formatMoneyInput(item.price),
+      category: getItemCategory(item),
+    });
+    setErrors({});
+    setIsModalOpen(true);
+  };
+
+  const categoryStats = [
+    {
+      label: 'Наименований в категории',
+      value: categoryInventory.length,
+      icon: Package,
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/10',
+    },
+    {
+      label: 'Стоимость остатков',
+      value: `${categoryInventory.reduce((acc, i) => acc + ((i.price || 0) * (i.qty || 0)), 0).toLocaleString('ru-RU')} ₽`,
+      icon: DollarSign,
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+    },
+    {
+      label: 'Всего дверей (шт.)',
+      value: categoryInventory.reduce((acc, i) => acc + (i.qty || 0), 0),
+      icon: TrendingUp,
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+    },
   ];
 
   return (
@@ -91,7 +139,7 @@ const WarehousePage = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Склад</h1>
-          <p className="text-gray-500 text-sm mt-1">Управление остатками и товарами</p>
+          <p className="text-gray-500 text-sm mt-1">Свободная продажа дверей</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportExcel}
@@ -99,16 +147,41 @@ const WarehousePage = () => {
             <FileDown size={16} /> Excel
           </button>
           <button
-            onClick={() => { setEditingItem(null); setFormData({ name: '', qty: '', price: '' }); setErrors({}); setIsModalOpen(true); }}
+            onClick={openAdd}
             className="px-4 py-2.5 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors flex items-center gap-2 text-sm">
-            <Plus size={16} /> Добавить товар
+            <Plus size={16} /> Добавить дверь
           </button>
         </div>
       </div>
 
+      {/* Category tabs */}
+      <div className="bg-[#111114] border border-white/[0.06] rounded-2xl p-1.5 flex gap-1.5">
+        {CATEGORIES.map(cat => {
+          const Icon = cat.icon;
+          const active = activeCategory === cat.key;
+          const count = catCount(cat.key);
+          return (
+            <button
+              key={cat.key}
+              onClick={() => setActiveCategory(cat.key)}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                active ? 'bg-[#e8de8c] text-black' : 'text-gray-400 hover:bg-white/[0.04]'
+              }`}
+            >
+              <Icon size={16} />
+              <span className="hidden sm:inline">{cat.label}</span>
+              <span className="sm:hidden">{cat.key === 'single' ? '1-ств.' : '2-ств.'}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                active ? 'bg-black/20' : 'bg-white/[0.06]'
+              }`}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {stats.map((s, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {categoryStats.map((s, i) => (
           <div key={i} className="bg-[#111114] border border-white/[0.06] rounded-2xl p-5 flex items-center gap-4">
             <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color}`}>
               <s.icon size={20} />
@@ -126,78 +199,114 @@ const WarehousePage = () => {
         <div className="p-5 border-b border-white/[0.06]">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
-            <input type="text" placeholder="Поиск товара..." value={searchTerm}
+            <input type="text" placeholder="Поиск двери..." value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl py-2.5 pl-9 pr-4 focus:outline-none focus:border-[#e8de8c]/30 transition-colors text-sm" />
           </div>
         </div>
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-white/[0.04]">
-              <th className="px-5 py-3 text-xs font-medium text-gray-500">Наименование</th>
-              <th className="px-5 py-3 text-xs font-medium text-gray-500">Количество</th>
-              <th className="px-5 py-3 text-xs font-medium text-gray-500">Цена за ед.</th>
-              <th className="px-5 py-3 text-xs font-medium text-gray-500 text-right">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInventory.map((item) => (
-              <tr key={item.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-white/[0.04] rounded-lg flex items-center justify-center text-gray-500 group-hover:text-[#e8de8c] group-hover:bg-[#e8de8c]/10 transition-colors">
-                      <Package size={16} />
-                    </div>
-                    <span className="font-medium">{item.name}</span>
-                  </div>
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`font-semibold ${item.qty < 5 ? 'text-red-400' : ''}`}>{item.qty}</span>
-                    {item.qty < 5 && <AlertTriangle size={14} className="text-red-400" />}
-                  </div>
-                </td>
-                <td className="px-5 py-4 text-sm text-gray-300 font-medium">{item.price.toLocaleString()} ₽</td>
-                <td className="px-5 py-4 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => { setEditingItem(item); setFormData({ name: item.name, qty: formatMoneyInput(item.qty), price: formatMoneyInput(item.price) }); setErrors({}); setIsModalOpen(true); }}
-                      className="p-2 hover:bg-white/[0.06] rounded-lg text-gray-500 hover:text-blue-400 transition-colors">
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => { if (window.confirm(`Удалить товар "${item.name}"?`)) deleteInventoryItem(item.id); }}
-                      className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[560px]">
+            <thead>
+              <tr className="border-b border-white/[0.04]">
+                <th className="px-5 py-3 text-xs font-medium text-gray-500">Наименование</th>
+                <th className="px-5 py-3 text-xs font-medium text-gray-500">Количество</th>
+                <th className="px-5 py-3 text-xs font-medium text-gray-500">Цена за ед.</th>
+                <th className="px-5 py-3 text-xs font-medium text-gray-500 text-right">Действия</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredInventory.map((item) => (
+                <tr key={item.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-white/[0.04] rounded-lg flex items-center justify-center text-gray-500 group-hover:text-[#e8de8c] group-hover:bg-[#e8de8c]/10 transition-colors">
+                        <Package size={16} />
+                      </div>
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold ${(item.qty || 0) < 5 ? 'text-red-400' : ''}`}>{item.qty || 0}</span>
+                      {(item.qty || 0) < 5 && <AlertTriangle size={14} className="text-red-400" />}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-gray-300 font-medium">{(item.price || 0).toLocaleString('ru-RU')} ₽</td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openEdit(item)}
+                        className="p-2 hover:bg-white/[0.06] rounded-lg text-gray-500 hover:text-blue-400 transition-colors">
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => { if (window.confirm(`Удалить дверь "${item.name}"?`)) deleteInventoryItem(item.id); }}
+                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredInventory.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="px-5 py-16 text-center text-gray-600">
+                    <Package size={32} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-sm font-medium">В этой категории пока нет дверей</p>
+                    <button onClick={openAdd} className="mt-3 text-xs text-[#e8de8c] font-semibold hover:underline">
+                      + Добавить первую
+                    </button>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="w-full max-w-md bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10">
               <form onSubmit={handleSubmit}>
                 <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
-                  <h2 className="text-lg font-bold">{editingItem ? 'Редактировать' : 'Новый товар'}</h2>
+                  <h2 className="text-lg font-bold">{editingItem ? 'Редактировать' : 'Новая дверь'}</h2>
                   <button type="button" onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-white/5 rounded-lg"><X size={20} /></button>
                 </div>
                 <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Полотно <span className="text-red-400">*</span></label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {CATEGORIES.map(cat => {
+                        const Icon = cat.icon;
+                        const active = formData.category === cat.key;
+                        return (
+                          <button
+                            key={cat.key}
+                            type="button"
+                            onClick={() => updateForm('category', cat.key)}
+                            className={`px-3 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border transition-colors ${
+                              active
+                                ? 'bg-[#e8de8c]/10 text-[#e8de8c] border-[#e8de8c]/30'
+                                : 'bg-white/[0.04] text-gray-400 border-white/[0.06] hover:bg-white/[0.06]'
+                            }`}
+                          >
+                            <Icon size={14} /> {cat.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Наименование <span className="text-red-400">*</span></label>
                     <input type="text" value={formData.name} onChange={(e) => updateForm('name', e.target.value)}
                       className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
                         errors.name ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
-                      }`} placeholder="Напр. Дверь стальная" />
+                      }`} placeholder="Напр. Дверь Стандарт" />
                     {errors.name && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.name}</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
