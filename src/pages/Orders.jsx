@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle
+  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle, Edit2
 } from 'lucide-react';
 import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
 import { uploadImage } from '../lib/uploads';
@@ -58,11 +58,12 @@ const DOOR_FIELDS = [
 ];
 
 const Orders = () => {
-  const { orders, wholesalers, createOrder, updateOrderStatus, addResponse, markShipped, nextOrderNumber } = useOrders();
+  const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, nextOrderNumber } = useOrders();
   const { currentUser } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
   const [chatImage, setChatImage] = useState(null);
@@ -125,17 +126,61 @@ const Orders = () => {
     const priceNum = parseMoneyInput(newOrder.price);
     const advanceNum = parseMoneyInput(newOrder.advance);
 
-    await createOrder({
+    const payload = {
       ...newOrder,
       price: priceNum,
       advance: advanceNum,
       total: priceNum,
       wholesaler,
       items: [],
-    });
+    };
+
+    if (editingOrderId) {
+      await updateOrder(editingOrderId, payload);
+    } else {
+      await createOrder(payload);
+    }
+    closeOrderForm();
+  };
+
+  const closeOrderForm = () => {
     setIsAddModalOpen(false);
+    setEditingOrderId(null);
     setNewOrder(EMPTY_ORDER);
     setErrors({});
+  };
+
+  const openEditOrder = (order) => {
+    setEditingOrderId(order.id);
+    setNewOrder({
+      model: order.model || '',
+      size: order.size || '',
+      canvas: order.canvas || '',
+      color: order.color || '',
+      casing: order.casing || '',
+      glass: order.glass || '',
+      grille: order.grille || '',
+      hardware: order.hardware || '',
+      threshold: order.threshold || '',
+      crown: order.crown || '',
+      panelOuter: order.panelOuter || '',
+      panelInner: order.panelInner || '',
+      transom: order.transom || '',
+      note: order.note || '',
+      client: {
+        name: order.client?.name || '',
+        phone: formatPhone(order.client?.phone || ''),
+        address: order.client?.address || '',
+      },
+      price: formatMoneyInput(order.price || order.total || ''),
+      advance: formatMoneyInput(order.advance || ''),
+      wholesalerId: order.wholesaler?.id || '',
+      isUrgent: !!order.isUrgent,
+      photos: order.photos || [],
+    });
+    setErrors({});
+    setIsAddModalOpen(true);
+    setSelectedOrder(null);
   };
 
   const handleOrderPhoto = async (e) => {
@@ -383,6 +428,14 @@ const Orders = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <button
+                      onClick={() => openEditOrder(activeSelected)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-xs font-semibold text-blue-400 transition-colors"
+                    >
+                      <Edit2 size={14} /> Редактировать
+                    </button>
+                  )}
                   <button onClick={() => window.print()} className="p-2 hover:bg-white/5 rounded-lg text-gray-500">
                     <Printer size={18} />
                   </button>
@@ -625,7 +678,7 @@ const Orders = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={closeOrderForm}
               className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             />
             <motion.div
@@ -637,15 +690,19 @@ const Orders = () => {
               <form onSubmit={handleCreateOrder} className="flex flex-col max-h-[92vh]">
                 <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
                   <div>
-                    <h2 className="text-lg font-bold">Новый заказ</h2>
+                    <h2 className="text-lg font-bold">
+                      {editingOrderId ? `Редактировать заказ #${orders.find(o => o.id === editingOrderId)?.code || ''}` : 'Новый заказ'}
+                    </h2>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-[#e8de8c] font-semibold">Код: #{nextOrderNumber}</span>
+                      {!editingOrderId && (
+                        <span className="text-xs text-[#e8de8c] font-semibold">Код: #{nextOrderNumber}</span>
+                      )}
                       <span className="text-xs text-gray-500 flex items-center gap-1">
                         <Calendar size={10} /> {new Date().toLocaleString('ru-RU')}
                       </span>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setIsAddModalOpen(false)} className="p-1.5 hover:bg-white/5 rounded-lg">
+                  <button type="button" onClick={closeOrderForm} className="p-1.5 hover:bg-white/5 rounded-lg">
                     <X size={20} />
                   </button>
                 </div>
@@ -888,7 +945,7 @@ const Orders = () => {
                     type="submit"
                     className="px-8 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors text-sm"
                   >
-                    Создать заказ
+                    {editingOrderId ? 'Сохранить' : 'Создать заказ'}
                   </button>
                 </div>
               </form>

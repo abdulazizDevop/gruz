@@ -222,6 +222,14 @@ export const OrderProvider = ({ children }) => {
     await updateDoc(doc(db, 'orders', orderId), patch);
   };
 
+  const updateOrder = async (orderId, patch) => {
+    const immutable = ['id', 'code', 'createdAt', 'adminId', 'adminName', 'status', 'responseRoom', 'assemblerId', 'assemblerName', 'readyAt'];
+    const safe = { ...patch };
+    immutable.forEach(k => delete safe[k]);
+    safe.updatedAt = new Date().toISOString();
+    await updateDoc(doc(db, 'orders', orderId), safe);
+  };
+
   const addResponse = async (orderId, message, userId, userName, extra = {}) => {
     await updateDoc(doc(db, 'orders', orderId), {
       responseRoom: arrayUnion({
@@ -297,6 +305,7 @@ export const OrderProvider = ({ children }) => {
         notifications,
         nextOrderNumber,
         createOrder,
+        updateOrder,
         updateOrderStatus,
         addResponse,
         markShipped,
