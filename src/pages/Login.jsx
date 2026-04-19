@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Lock, User, ChevronRight } from 'lucide-react';
 import { requestNotificationPermission } from '../lib/notifications';
+import InstallPWA from '../components/InstallPWA';
 
 const Login = () => {
   const [name, setName] = useState('');
@@ -139,6 +140,8 @@ const Login = () => {
               )}
             </button>
           </form>
+
+          <InstallPWA />
 
           <div className="mt-8 pt-8 border-t border-white/5 text-center">
             <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">система учёта торговли</p>
