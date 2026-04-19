@@ -6,12 +6,7 @@ import {
   Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle
 } from 'lucide-react';
 import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
-
-const fileToBase64 = (file) => new Promise((resolve) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(reader.result);
-  reader.readAsDataURL(file);
-});
+import { uploadImage } from '../lib/uploads';
 
 const formatMoney = (v) => {
   const n = Number(v || 0);
@@ -146,17 +141,27 @@ const Orders = () => {
   const handleOrderPhoto = async (e) => {
     const files = Array.from(e.target.files);
     for (const file of files) {
-      const base64 = await fileToBase64(file);
-      setNewOrder(prev => ({ ...prev, photos: [...prev.photos, base64] }));
+      try {
+        const url = await uploadImage(file);
+        setNewOrder(prev => ({ ...prev, photos: [...prev.photos, url] }));
+      } catch (err) {
+        console.error('Upload failed', err);
+      }
     }
+    e.target.value = '';
   };
 
   const handleChatImageSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setChatImage(base64);
-    setChatImagePreview(base64);
+    try {
+      const url = await uploadImage(file);
+      setChatImage(url);
+      setChatImagePreview(url);
+    } catch (err) {
+      console.error('Upload failed', err);
+    }
+    e.target.value = '';
   };
 
   const handleSendChat = () => {

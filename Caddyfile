@@ -3,7 +3,6 @@
 }
 
 72-56-39-78.sslip.io {
-	root * /srv
 	encode gzip zstd
 
 	@assets path /assets/*
@@ -12,6 +11,9 @@
 	@noCache path /service-worker.js /manifest.json
 	header @noCache Cache-Control "no-cache, no-store, must-revalidate"
 
+	@uploadedImages path /uploads/*
+	header @uploadedImages Cache-Control "public, max-age=31536000, immutable"
+
 	header {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "SAMEORIGIN"
@@ -19,6 +21,18 @@
 		Permissions-Policy "geolocation=(), microphone=(), camera=()"
 	}
 
-	try_files {path} /index.html
-	file_server
+	handle /api/* {
+		reverse_proxy uploads:3000
+	}
+
+	handle /uploads/* {
+		root * /srv
+		file_server
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
 }

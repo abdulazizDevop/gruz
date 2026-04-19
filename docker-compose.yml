@@ -9,7 +9,23 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+      - uploads_data:/srv/uploads:ro
+    depends_on:
+      - uploads
+
+  uploads:
+    build: ./upload-service
+    container_name: doorman-uploads
+    restart: unless-stopped
+    environment:
+      - UPLOAD_DIR=/data/uploads
+      - PORT=3000
+      - MAX_FILE_SIZE=10485760
+      - ALLOWED_ORIGINS=https://72-56-39-78.sslip.io,http://72-56-39-78.sslip.io,http://localhost:5173,http://localhost:5174
+    volumes:
+      - uploads_data:/data/uploads
 
 volumes:
   caddy_data:
   caddy_config:
+  uploads_data:
