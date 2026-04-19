@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle, Edit2
+  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle, Edit2, Loader2
 } from 'lucide-react';
 import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
 import { uploadImage } from '../lib/uploads';
@@ -71,6 +71,14 @@ const Orders = () => {
   const [viewImage, setViewImage] = useState(null);
   const chatFileRef = useRef(null);
   const orderPhotoRef = useRef(null);
+
+  const [readyModalOpen, setReadyModalOpen] = useState(false);
+  const [readyPhotoUrl, setReadyPhotoUrl] = useState('');
+  const [readyComment, setReadyComment] = useState('');
+  const [readyUploading, setReadyUploading] = useState(false);
+  const [readySaving, setReadySaving] = useState(false);
+  const [readyError, setReadyError] = useState('');
+  const readyFileRef = useRef(null);
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
   const isAssembler = currentUser?.role === 'assembler';
@@ -227,6 +235,68 @@ const Orders = () => {
     if (!activeSelected) return;
     const label = reactionType === 'progress' ? '💭 В процессе' : '✅ Готово';
     addResponse(activeSelected.id, label, currentUser.id, currentUser.name, { type: 'reaction' });
+  };
+
+  const openReadyModal = () => {
+    setReadyPhotoUrl('');
+    setReadyComment('');
+    setReadyError('');
+    setReadyUploading(false);
+    setReadySaving(false);
+    setReadyModalOpen(true);
+  };
+
+  const closeReadyModal = () => {
+    if (readySaving || readyUploading) return;
+    setReadyModalOpen(false);
+  };
+
+  const handleReadyPhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReadyUploading(true);
+    setReadyError('');
+    try {
+      const url = await uploadImage(file);
+      setReadyPhotoUrl(url);
+    } catch (err) {
+      console.error(err);
+      setReadyError('Не удалось загрузить фото');
+    } finally {
+      setReadyUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleReadyConfirm = async () => {
+    if (!activeSelected) return;
+    const hasPhoto = !!readyPhotoUrl;
+    const hasComment = !!readyComment.trim();
+    if (!hasPhoto && !hasComment) {
+      setReadyError('Добавьте фото или комментарий');
+      return;
+    }
+    setReadySaving(true);
+    setReadyError('');
+    try {
+      await addResponse(
+        activeSelected.id,
+        readyComment.trim() || '✅ Готово',
+        currentUser.id,
+        currentUser.name,
+        {
+          image: readyPhotoUrl || null,
+          type: hasPhoto ? 'photo' : 'message',
+        }
+      );
+      await updateOrderStatus(activeSelected.id, '✅ Сделано', currentUser.id, currentUser.name);
+      setReadyModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      setReadyError('Не удалось сохранить. Попробуйте ещё раз.');
+    } finally {
+      setReadySaving(false);
+    }
   };
 
   const updateField = (key, value) => {
@@ -649,7 +719,7 @@ const Orders = () => {
 
                   {isAssembler && !activeSelected.status?.includes('✅') && (
                     <button
-                      onClick={() => updateOrderStatus(activeSelected.id, '✅ Сделано', currentUser.id, currentUser.name)}
+                      onClick={openReadyModal}
                       className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                     >
                       <CheckCircle2 size={18} /> Отметить готовым
@@ -949,6 +1019,149 @@ const Orders = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Ready confirmation modal (sborshik) */}
+      <AnimatePresence>
+        {readyModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeReadyModal}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+              className="relative z-10 w-full max-w-md bg-[#111114] border border-emerald-500/20 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 shrink-0">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-bold">Отметить готовым</h2>
+                    <p className="text-xs text-gray-500 truncate">
+                      Заказ #{activeSelected?.code} • {activeSelected?.client?.name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeReadyModal}
+                  disabled={readySaving}
+                  className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs text-gray-500 font-medium mb-2 block uppercase tracking-wider">
+                    Фото готовой двери
+                  </label>
+                  <input
+                    ref={readyFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleReadyPhotoSelect}
+                  />
+                  {readyPhotoUrl ? (
+                    <div className="relative inline-block">
+                      <button
+                        type="button"
+                        onClick={() => setViewImage(readyPhotoUrl)}
+                        className="block rounded-xl overflow-hidden border border-white/10 hover:border-emerald-500/40 transition-colors"
+                      >
+                        <img
+                          src={readyPhotoUrl}
+                          alt=""
+                          className="max-w-full max-h-48 object-cover"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReadyPhotoUrl('')}
+                        className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => readyFileRef.current?.click()}
+                      disabled={readyUploading}
+                      className="w-full flex items-center justify-center gap-2 py-8 bg-white/[0.04] hover:bg-white/[0.08] border border-dashed border-white/10 hover:border-emerald-500/30 rounded-xl text-gray-400 hover:text-emerald-400 transition-colors disabled:opacity-60"
+                    >
+                      {readyUploading ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Загрузка...
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon size={18} /> Выбрать фото
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 font-medium mb-2 block uppercase tracking-wider">
+                    Комментарий
+                  </label>
+                  <textarea
+                    value={readyComment}
+                    onChange={(e) => { setReadyComment(e.target.value); if (readyError) setReadyError(''); }}
+                    className="w-full bg-white/[0.04] border border-white/[0.06] focus:border-emerald-500/30 rounded-xl p-3 h-24 resize-none text-sm focus:outline-none"
+                    placeholder="Напишите пару слов о работе..."
+                  />
+                </div>
+
+                {readyError && (
+                  <p className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertCircle size={12} /> {readyError}
+                  </p>
+                )}
+              </div>
+
+              <div className="p-5 border-t border-white/[0.06] bg-white/[0.02] flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeReadyModal}
+                  disabled={readySaving}
+                  className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-50 text-white font-medium py-3 rounded-xl text-sm transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReadyConfirm}
+                  disabled={readySaving || readyUploading || (!readyPhotoUrl && !readyComment.trim())}
+                  className="flex-[2] bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  {readySaving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Сохранение...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} /> Отметить готовым
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
