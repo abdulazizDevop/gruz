@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import {
-  Plus, Search, Package, Trash2, Edit2, X, FileDown, AlertTriangle, TrendingUp, DollarSign, AlertCircle, DoorOpen, DoorClosed
+  Plus, Search, Package, Trash2, Edit2, X, FileDown, AlertTriangle, TrendingUp, DollarSign, AlertCircle, DoorOpen, DoorClosed, ImagePlus, Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { required, positiveInteger, nonNegativeNumber, formatMoneyInput, parseMoneyInput } from '../lib/validation';
+import { uploadImage } from '../lib/uploads';
+import ImageLightbox from '../components/ImageLightbox';
 
 const CATEGORIES = [
   { key: 'single', label: 'Одностворчатые', icon: DoorClosed },
@@ -20,8 +22,11 @@ const WarehousePage = () => {
   const [activeCategory, setActiveCategory] = useState('single');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', qty: '', price: '', category: 'single' });
+  const [formData, setFormData] = useState({ name: '', qty: '', price: '', category: 'single', imageUrl: '' });
   const [errors, setErrors] = useState({});
+  const [uploading, setUploading] = useState(false);
+  const [viewImage, setViewImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   const categoryInventory = inventory.filter(i => getItemCategory(i) === activeCategory);
   const filteredInventory = categoryInventory.filter(i =>
@@ -30,13 +35,36 @@ const WarehousePage = () => {
 
   const catCount = (cat) => inventory.filter(i => getItemCategory(i) === cat).reduce((acc, i) => acc + (i.qty || 0), 0);
 
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setFormData(prev => ({ ...prev, imageUrl: url }));
+    } catch (err) {
+      console.error('Upload failed', err);
+      window.alert('Не удалось загрузить фото');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const handleExportExcel = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const absolute = (url) => {
+      if (!url) return '';
+      if (url.startsWith('data:') || url.startsWith('http')) return url;
+      return origin + url;
+    };
     const data = inventory.map(item => ({
       'Наименование двери': item.name,
       'Полотно': CATEGORIES.find(c => c.key === getItemCategory(item))?.label || '—',
       'Количество (шт.)': item.qty || 0,
       'Цена за единицу (₽)': item.price || 0,
       'Общая стоимость (₽)': (item.price || 0) * (item.qty || 0),
+      'Фото': absolute(item.imageUrl),
     }));
     data.push({
       'Наименование двери': 'ИТОГО',
@@ -44,9 +72,10 @@ const WarehousePage = () => {
       'Количество (шт.)': inventory.reduce((acc, i) => acc + (i.qty || 0), 0),
       'Цена за единицу (₽)': '',
       'Общая стоимость (₽)': inventory.reduce((acc, i) => acc + ((i.price || 0) * (i.qty || 0)), 0),
+      'Фото': '',
     });
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 22 }];
+    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 40 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Склад');
     XLSX.writeFile(wb, `DOORMAN_Склад_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -76,12 +105,13 @@ const WarehousePage = () => {
       qty: parseMoneyInput(formData.qty),
       price: parseMoneyInput(formData.price),
       category: formData.category || 'single',
+      imageUrl: formData.imageUrl || '',
     };
     if (editingItem) updateInventoryItem(editingItem.id, payload);
     else addInventoryItem(payload);
     setIsModalOpen(false);
     setEditingItem(null);
-    setFormData({ name: '', qty: '', price: '', category: activeCategory });
+    setFormData({ name: '', qty: '', price: '', category: activeCategory, imageUrl: '' });
     setErrors({});
   };
 
@@ -93,7 +123,7 @@ const WarehousePage = () => {
 
   const openAdd = () => {
     setEditingItem(null);
-    setFormData({ name: '', qty: '', price: '', category: activeCategory });
+    setFormData({ name: '', qty: '', price: '', category: activeCategory, imageUrl: '' });
     setErrors({});
     setIsModalOpen(true);
   };
@@ -105,6 +135,7 @@ const WarehousePage = () => {
       qty: formatMoneyInput(item.qty),
       price: formatMoneyInput(item.price),
       category: getItemCategory(item),
+      imageUrl: item.imageUrl || '',
     });
     setErrors({});
     setIsModalOpen(true);
@@ -219,9 +250,19 @@ const WarehousePage = () => {
                 <tr key={item.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-white/[0.04] rounded-lg flex items-center justify-center text-gray-500 group-hover:text-[#e8de8c] group-hover:bg-[#e8de8c]/10 transition-colors">
-                        <Package size={16} />
-                      </div>
+                      {item.imageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewImage(item.imageUrl)}
+                          className="w-11 h-11 rounded-lg overflow-hidden border border-white/10 hover:border-[#e8de8c]/40 transition-colors shrink-0"
+                        >
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        </button>
+                      ) : (
+                        <div className="w-11 h-11 bg-white/[0.04] rounded-lg flex items-center justify-center text-gray-500 group-hover:text-[#e8de8c] group-hover:bg-[#e8de8c]/10 transition-colors shrink-0">
+                          <Package size={16} />
+                        </div>
+                      )}
                       <span className="font-medium">{item.name}</span>
                     </div>
                   </td>
@@ -278,6 +319,50 @@ const WarehousePage = () => {
                   <button type="button" onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-white/5 rounded-lg"><X size={20} /></button>
                 </div>
                 <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">Фото двери</label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoSelect}
+                    />
+                    {formData.imageUrl ? (
+                      <div className="relative inline-block">
+                        <button
+                          type="button"
+                          onClick={() => setViewImage(formData.imageUrl)}
+                          className="block rounded-xl overflow-hidden border border-white/10 hover:border-[#e8de8c]/40 transition-colors"
+                        >
+                          <img src={formData.imageUrl} alt="" className="w-24 h-24 object-cover" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="w-24 h-24 bg-white/[0.04] hover:bg-white/[0.08] border border-dashed border-white/10 hover:border-[#e8de8c]/30 rounded-xl flex flex-col items-center justify-center text-gray-500 hover:text-[#e8de8c] transition-colors disabled:opacity-60"
+                      >
+                        {uploading ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <>
+                            <ImagePlus size={20} />
+                            <span className="text-[10px] mt-1">Добавить</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Полотно <span className="text-red-400">*</span></label>
                     <div className="grid grid-cols-2 gap-2">
@@ -341,6 +426,8 @@ const WarehousePage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <ImageLightbox src={viewImage} onClose={() => setViewImage(null)} />
     </div>
   );
 };
