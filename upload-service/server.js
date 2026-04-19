@@ -37,9 +37,12 @@ const app = express();
 app.set('trust proxy', true);
 app.disable('x-powered-by');
 
+app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'uploads' }));
+
 app.use((req, res, next) => {
   if (ALLOWED_ORIGINS.length === 0) return next();
   const origin = req.headers.origin || req.headers.referer || '';
+  if (!origin) return next();
   const ok = ALLOWED_ORIGINS.some((a) => origin.startsWith(a));
   if (!ok) return res.status(403).json({ error: 'ORIGIN_NOT_ALLOWED' });
   next();
@@ -64,8 +67,6 @@ app.use((req, res, next) => {
   hits.set(ip, list);
   next();
 });
-
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'uploads' }));
 
 app.post('/api/upload', (req, res) => {
   upload.single('file')(req, res, (err) => {
