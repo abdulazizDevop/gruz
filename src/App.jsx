@@ -29,6 +29,7 @@ import ReservedWarehouse from './pages/ReservedWarehouse';
 import AdminManagement from './pages/AdminManagement';
 import Wholesalers from './pages/Wholesalers';
 import ArchivePage from './pages/Archive';
+import BottomNav from './components/BottomNav';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser } = useAuth();
@@ -205,15 +206,11 @@ const Layout = ({ children }) => {
         style={{ '--sidebar-w': `${desktopWidth}px` }}
       >
         {/* Top bar */}
-        <header className="h-16 border-b border-white/[0.06] flex items-center justify-between gap-3 px-4 sm:px-6 bg-[#09090b]/90 backdrop-blur-xl sticky top-0 z-40">
+        <header
+          className="border-b border-white/[0.06] flex items-center justify-between gap-3 px-4 sm:px-6 bg-[#09090b]/90 backdrop-blur-xl sticky top-0 z-40"
+          style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(4rem + env(safe-area-inset-top))' }}
+        >
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-            <button
-              onClick={() => setIsMobileOpen(true)}
-              className="md:hidden p-2 bg-white/[0.04] hover:bg-white/[0.08] rounded-xl text-gray-300 shrink-0"
-              aria-label="Открыть меню"
-            >
-              <Menu size={18} />
-            </button>
             <div className="relative w-full max-w-md hidden sm:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
               <input
@@ -259,7 +256,10 @@ const Layout = ({ children }) => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div
+          className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 md:pb-6"
+          style={{ paddingBottom: 'max(6rem, calc(5rem + env(safe-area-inset-bottom)))' }}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -274,6 +274,8 @@ const Layout = ({ children }) => {
           </AnimatePresence>
         </div>
       </main>
+
+      <BottomNav role={currentUser?.role} onMore={() => setIsMobileOpen(true)} />
 
       {/* iPhone-style floating notifications */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none">
