@@ -17,7 +17,8 @@ import {
   X,
   UserCheck,
   PackageCheck,
-  ChevronLeft
+  ChevronLeft,
+  Archive
 } from 'lucide-react';
 
 import Login from './pages/Login';
@@ -27,6 +28,7 @@ import WarehousePage from './pages/Warehouse';
 import ReservedWarehouse from './pages/ReservedWarehouse';
 import AdminManagement from './pages/AdminManagement';
 import Wholesalers from './pages/Wholesalers';
+import ArchivePage from './pages/Archive';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser } = useAuth();
@@ -125,6 +127,10 @@ const Layout = ({ children }) => {
         )}
 
         <SidebarItem to="/reserved" icon={PackageCheck} label="Заказной склад" active={location.pathname === '/reserved'} collapsed={collapsed} />
+
+        {(isAdmin || isSuperAdmin) && (
+          <SidebarItem to="/archive" icon={Archive} label="Архив" active={location.pathname === '/archive'} collapsed={collapsed} />
+        )}
 
         {isSuperAdmin && (
           <>
@@ -334,6 +340,11 @@ const App = () => {
             <Route path="/wholesalers" element={
               <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
                 <Layout><Wholesalers /></Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/archive" element={
+              <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+                <Layout><ArchivePage /></Layout>
               </ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/" replace />} />

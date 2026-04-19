@@ -249,15 +249,46 @@ export const OrderProvider = ({ children }) => {
       const saleRecord = {
         id: orderToShip.id,
         code: orderToShip.code,
+        createdAt: orderToShip.createdAt || null,
+        shippedAt: new Date().toISOString(),
+        // Client snapshot
+        client: orderToShip.client || null,
         clientName: orderToShip.client?.name || '',
         clientPhone: orderToShip.client?.phone || '',
-        total: orderToShip.total || 0,
+        clientAddress: orderToShip.client?.address || '',
+        // Door specs
+        model: orderToShip.model || '',
+        size: orderToShip.size || '',
+        canvas: orderToShip.canvas || '',
+        color: orderToShip.color || '',
+        casing: orderToShip.casing || '',
+        glass: orderToShip.glass || '',
+        grille: orderToShip.grille || '',
+        hardware: orderToShip.hardware || '',
+        threshold: orderToShip.threshold || '',
+        crown: orderToShip.crown || '',
+        panelOuter: orderToShip.panelOuter || '',
+        panelInner: orderToShip.panelInner || '',
+        transom: orderToShip.transom || '',
+        note: orderToShip.note || '',
+        // Payment
+        price: orderToShip.price || orderToShip.total || 0,
+        advance: orderToShip.advance || 0,
+        total: orderToShip.price || orderToShip.total || 0,
+        // Team
+        adminId: orderToShip.adminId || null,
+        adminName: orderToShip.adminName || '',
+        assemblerId: orderToShip.assemblerId || null,
+        assemblerName: orderToShip.assemblerName || '',
+        // Extras
+        wholesaler: orderToShip.wholesaler || null,
+        photos: orderToShip.photos || [],
+        responseRoom: orderToShip.responseRoom || [],
         items: (orderToShip.items || []).map(i => ({
           name: i.name,
           qty: i.qty,
           price: i.price,
         })),
-        shippedAt: new Date().toISOString(),
       };
       await setDoc(doc(db, 'sales', orderToShip.id), saleRecord);
     }
