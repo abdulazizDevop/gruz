@@ -4,6 +4,12 @@ import {
   LayoutDashboard, ShoppingCart, PackageCheck, Warehouse, Archive, Menu, Users
 } from 'lucide-react';
 
+const PRODUCTION_NAV = [
+  { to: '/', label: 'Главная', icon: LayoutDashboard },
+  { to: '/orders', label: 'Заказы', icon: ShoppingCart },
+  { to: '/reserved', label: 'Готовые', icon: PackageCheck },
+];
+
 const ITEMS_BY_ROLE = {
   superadmin: [
     { to: '/', label: 'Главная', icon: LayoutDashboard },
@@ -17,11 +23,6 @@ const ITEMS_BY_ROLE = {
     { to: '/reserved', label: 'Готовые', icon: PackageCheck },
     { to: '/archive', label: 'Архив', icon: Archive },
   ],
-  assembler: [
-    { to: '/', label: 'Главная', icon: LayoutDashboard },
-    { to: '/orders', label: 'Заказы', icon: ShoppingCart },
-    { to: '/reserved', label: 'Готовые', icon: PackageCheck },
-  ],
   warehouse: [
     { to: '/', label: 'Главная', icon: LayoutDashboard },
     { to: '/warehouse', label: 'Склад', icon: Warehouse },
@@ -29,9 +30,11 @@ const ITEMS_BY_ROLE = {
   ],
 };
 
+const PRODUCTION_ROLE_KEYS = ['designer', 'laser_operator', 'bender_operator', 'welder', 'painter', 'assembler'];
+
 const BottomNav = ({ role, onMore }) => {
   const location = useLocation();
-  const items = ITEMS_BY_ROLE[role] || ITEMS_BY_ROLE.admin;
+  const items = ITEMS_BY_ROLE[role] || (PRODUCTION_ROLE_KEYS.includes(role) ? PRODUCTION_NAV : ITEMS_BY_ROLE.admin);
 
   return (
     <nav

@@ -30,6 +30,7 @@ import AdminManagement from './pages/AdminManagement';
 import Wholesalers from './pages/Wholesalers';
 import ArchivePage from './pages/Archive';
 import BottomNav from './components/BottomNav';
+import { PRODUCTION_ROLES, isProductionRole } from './lib/roles';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser } = useAuth();
@@ -66,7 +67,7 @@ const Layout = ({ children }) => {
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
   const isSuperAdmin = currentUser?.role === 'superadmin';
   const isWarehouse = currentUser?.role === 'warehouse';
-  const isAssembler = currentUser?.role === 'assembler';
+  const isAssembler = isProductionRole(currentUser?.role);
 
   const readyCount = orders.filter(o => o.status?.includes('✅')).length;
   const desktopWidth = isDesktopCollapsed ? 72 : 260;
@@ -320,7 +321,7 @@ const App = () => {
               </ProtectedRoute>
             } />
             <Route path="/orders" element={
-              <ProtectedRoute allowedRoles={['admin', 'superadmin', 'assembler']}>
+              <ProtectedRoute allowedRoles={['admin', 'superadmin', ...PRODUCTION_ROLES]}>
                 <Layout><Orders /></Layout>
               </ProtectedRoute>
             } />

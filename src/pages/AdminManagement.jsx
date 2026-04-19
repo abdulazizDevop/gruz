@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import {
-  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle
+  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Hammer, Flame, Paintbrush, Ruler, Zap
 } from 'lucide-react';
 import { required, minLength } from '../lib/validation';
+import { ROLES, getRoleLabel } from '../lib/roles';
 
 const AdminManagement = () => {
   const { users, addUser, deleteUser, currentUser, updateSelf } = useAuth();
@@ -89,19 +90,14 @@ const AdminManagement = () => {
     switch (role) {
       case 'superadmin': return <Shield className="text-[#e8de8c]" size={16} />;
       case 'admin': return <ShoppingCart className="text-blue-400" size={16} />;
+      case 'designer': return <Ruler className="text-cyan-400" size={16} />;
+      case 'laser_operator': return <Zap className="text-fuchsia-400" size={16} />;
+      case 'bender_operator': return <Hammer className="text-orange-400" size={16} />;
+      case 'welder': return <Flame className="text-red-400" size={16} />;
+      case 'painter': return <Paintbrush className="text-pink-400" size={16} />;
       case 'assembler': return <Wrench className="text-emerald-400" size={16} />;
       case 'warehouse': return <Package className="text-amber-400" size={16} />;
       default: return null;
-    }
-  };
-
-  const getRoleLabel = (role) => {
-    switch (role) {
-      case 'superadmin': return 'Главный';
-      case 'admin': return 'Админ';
-      case 'assembler': return 'Сборщик';
-      case 'warehouse': return 'Склад';
-      default: return 'Сотрудник';
     }
   };
 
@@ -275,9 +271,9 @@ const AdminManagement = () => {
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Роль</label>
                     <select value={formData.role} onChange={(e) => updateForm('role', e.target.value)}
                       className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm text-gray-300 appearance-none">
-                      <option value="admin">Админ</option>
-                      <option value="assembler">Сборщик</option>
-                      <option value="warehouse">Склад</option>
+                      {ROLES.map(r => (
+                        <option key={r.key} value={r.key}>{r.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

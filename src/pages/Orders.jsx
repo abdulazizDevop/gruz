@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
 import { uploadImage } from '../lib/uploads';
+import { isProductionRole, getRoleLabel } from '../lib/roles';
 
 const formatMoney = (v) => {
   const n = Number(v || 0);
@@ -75,13 +76,14 @@ const Orders = () => {
   const [readyModalOpen, setReadyModalOpen] = useState(false);
   const [readyPhotoUrl, setReadyPhotoUrl] = useState('');
   const [readyComment, setReadyComment] = useState('');
+  const [readyMasterName, setReadyMasterName] = useState('');
   const [readyUploading, setReadyUploading] = useState(false);
   const [readySaving, setReadySaving] = useState(false);
   const [readyError, setReadyError] = useState('');
   const readyFileRef = useRef(null);
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
-  const isAssembler = currentUser?.role === 'assembler';
+  const isAssembler = isProductionRole(currentUser?.role);
   const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
 
   const visibleOrders = isSuperAdmin
@@ -240,6 +242,7 @@ const Orders = () => {
   const openReadyModal = () => {
     setReadyPhotoUrl('');
     setReadyComment('');
+    setReadyMasterName('');
     setReadyError('');
     setReadyUploading(false);
     setReadySaving(false);
@@ -276,6 +279,11 @@ const Orders = () => {
       setReadyError('Добавьте фото или комментарий');
       return;
     }
+    const masterName = readyMasterName.trim();
+    const displayName = masterName
+      ? `${masterName} (${getRoleLabel(currentUser.role)})`
+      : currentUser.name;
+
     setReadySaving(true);
     setReadyError('');
     try {
@@ -283,13 +291,13 @@ const Orders = () => {
         activeSelected.id,
         readyComment.trim() || '✅ Готово',
         currentUser.id,
-        currentUser.name,
+        displayName,
         {
           image: readyPhotoUrl || null,
           type: hasPhoto ? 'photo' : 'message',
         }
       );
-      await updateOrderStatus(activeSelected.id, '✅ Сделано', currentUser.id, currentUser.name);
+      await updateOrderStatus(activeSelected.id, '✅ Сделано', currentUser.id, displayName);
       setReadyModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -1115,6 +1123,20 @@ const Orders = () => {
                       )}
                     </button>
                   )}
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 font-medium mb-2 block uppercase tracking-wider">
+                    Имя мастера <span className="text-gray-600 normal-case tracking-normal">(необязательно)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={readyMasterName}
+                    onChange={(e) => setReadyMasterName(e.target.value)}
+                    placeholder={`По умолчанию: ${currentUser?.name || ''}`}
+                    className="w-full bg-white/[0.04] border border-white/[0.06] focus:border-emerald-500/30 rounded-xl p-3 text-sm focus:outline-none"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">Кто фактически выполнил работу</p>
                 </div>
 
                 <div>

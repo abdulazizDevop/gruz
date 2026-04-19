@@ -154,7 +154,8 @@ export const OrderProvider = ({ children }) => {
     if (!isOwnOrder) return;
 
     const title = `Заказ #${order.code} готов!`;
-    const message = `Сборщик ${order.assemblerName || ''} завершил работу над заказом.`.trim();
+    const who = order.assemblerName ? order.assemblerName : 'Мастер';
+    const message = `${who} завершил работу над заказом.`;
 
     addNotification({
       id: Date.now() + Math.random(),
