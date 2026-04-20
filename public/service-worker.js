@@ -1,4 +1,4 @@
-const CACHE_NAME = 'doorman-v4';
+const CACHE_NAME = 'doorman-v5';
 const APP_SHELL = ['/favicon.svg', '/doorman-logo.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
