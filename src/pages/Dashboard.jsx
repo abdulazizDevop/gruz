@@ -141,7 +141,7 @@ const Dashboard = () => {
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[560px]">
               <thead>
                 <tr className="border-b border-white/[0.04]">
                   <th className="px-5 py-3 text-xs font-medium text-gray-500">Код</th>

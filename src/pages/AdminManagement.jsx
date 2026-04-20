@@ -249,7 +249,8 @@ const AdminManagement = () => {
           <span className="text-xs text-gray-500">{users.length} сотрудников</span>
         </div>
 
-        <table className="w-full text-left">
+        <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[640px]">
           <thead>
             <tr className="border-b border-white/[0.04]">
               <th className="px-5 py-3 text-xs font-medium text-gray-500">Сотрудник</th>
@@ -309,6 +310,7 @@ const AdminManagement = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal */}
