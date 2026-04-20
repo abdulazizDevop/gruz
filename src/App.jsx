@@ -31,11 +31,15 @@ import Wholesalers from './pages/Wholesalers';
 import ArchivePage from './pages/Archive';
 import BottomNav from './components/BottomNav';
 import { PRODUCTION_ROLES, isProductionRole } from './lib/roles';
+import { hasPermission } from './lib/permissions';
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, allowedRoles, permission }) => {
   const { currentUser } = useAuth();
   if (!currentUser) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    return <Navigate to="/" replace />;
+  }
+  if (permission && !hasPermission(currentUser, permission)) {
     return <Navigate to="/" replace />;
   }
   return children;
@@ -108,29 +112,37 @@ const Layout = ({ children }) => {
       )}
 
       <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} py-4 space-y-1 overflow-y-auto`}>
-        {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mb-2">Главное</p>}
-        <SidebarItem to="/" icon={LayoutDashboard} label="Обзор" active={location.pathname === '/'} collapsed={collapsed} />
+        {hasPermission(currentUser, 'dashboard') && (
+          <>
+            {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mb-2">Главное</p>}
+            <SidebarItem to="/" icon={LayoutDashboard} label="Обзор" active={location.pathname === '/'} collapsed={collapsed} />
+          </>
+        )}
 
-        {(isAdmin || isSuperAdmin || isAssembler) && (
+        {(hasPermission(currentUser, 'orders') || hasPermission(currentUser, 'wholesalers')) && (
           <>
             {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">Торговля</p>}
-            <SidebarItem to="/orders" icon={ShoppingCart} label="Заказы" active={location.pathname === '/orders'} collapsed={collapsed} />
-            {(isAdmin || isSuperAdmin) && (
+            {hasPermission(currentUser, 'orders') && (
+              <SidebarItem to="/orders" icon={ShoppingCart} label="Заказы" active={location.pathname === '/orders'} collapsed={collapsed} />
+            )}
+            {hasPermission(currentUser, 'wholesalers') && (
               <SidebarItem to="/wholesalers" icon={Users} label="Оптовики" active={location.pathname === '/wholesalers'} collapsed={collapsed} />
             )}
           </>
         )}
 
-        {(isWarehouse || isSuperAdmin) && (
+        {hasPermission(currentUser, 'warehouse') && (
           <>
             {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">Склад</p>}
             <SidebarItem to="/warehouse" icon={Warehouse} label="Склад" active={location.pathname === '/warehouse'} collapsed={collapsed} />
           </>
         )}
 
-        <SidebarItem to="/reserved" icon={PackageCheck} label="Заказной склад" active={location.pathname === '/reserved'} collapsed={collapsed} />
+        {hasPermission(currentUser, 'reserved') && (
+          <SidebarItem to="/reserved" icon={PackageCheck} label="Заказной склад" active={location.pathname === '/reserved'} collapsed={collapsed} />
+        )}
 
-        {(isAdmin || isSuperAdmin) && (
+        {hasPermission(currentUser, 'archive') && (
           <SidebarItem to="/archive" icon={Archive} label="Архив" active={location.pathname === '/archive'} collapsed={collapsed} />
         )}
 
@@ -276,7 +288,7 @@ const Layout = ({ children }) => {
         </div>
       </main>
 
-      <BottomNav role={currentUser?.role} onMore={() => setIsMobileOpen(true)} />
+      <BottomNav user={currentUser} onMore={() => setIsMobileOpen(true)} />
 
       {/* iPhone-style floating notifications */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none">
@@ -316,22 +328,22 @@ const App = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="dashboard">
                 <Layout><Dashboard /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/orders" element={
-              <ProtectedRoute allowedRoles={['admin', 'superadmin', ...PRODUCTION_ROLES]}>
+              <ProtectedRoute permission="orders">
                 <Layout><Orders /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/warehouse" element={
-              <ProtectedRoute allowedRoles={['warehouse', 'superadmin']}>
+              <ProtectedRoute permission="warehouse">
                 <Layout><WarehousePage /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/reserved" element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="reserved">
                 <Layout><ReservedWarehouse /></Layout>
               </ProtectedRoute>
             } />
@@ -341,12 +353,12 @@ const App = () => {
               </ProtectedRoute>
             } />
             <Route path="/wholesalers" element={
-              <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+              <ProtectedRoute permission="wholesalers">
                 <Layout><Wholesalers /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/archive" element={
-              <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+              <ProtectedRoute permission="archive">
                 <Layout><ArchivePage /></Layout>
               </ProtectedRoute>
             } />

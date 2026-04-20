@@ -3,38 +3,22 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, PackageCheck, Warehouse, Archive, Menu, Users
 } from 'lucide-react';
+import { hasPermission } from '../lib/permissions';
 
-const PRODUCTION_NAV = [
-  { to: '/', label: 'Главная', icon: LayoutDashboard },
-  { to: '/orders', label: 'Заказы', icon: ShoppingCart },
-  { to: '/reserved', label: 'Готовые', icon: PackageCheck },
+const ALL_ITEMS = [
+  { key: 'dashboard', to: '/', label: 'Главная', icon: LayoutDashboard },
+  { key: 'orders', to: '/orders', label: 'Заказы', icon: ShoppingCart },
+  { key: 'reserved', to: '/reserved', label: 'Готовые', icon: PackageCheck },
+  { key: 'warehouse', to: '/warehouse', label: 'Склад', icon: Warehouse },
+  { key: 'wholesalers', to: '/wholesalers', label: 'Оптовики', icon: Users },
+  { key: 'archive', to: '/archive', label: 'Архив', icon: Archive },
 ];
 
-const ITEMS_BY_ROLE = {
-  superadmin: [
-    { to: '/', label: 'Главная', icon: LayoutDashboard },
-    { to: '/orders', label: 'Заказы', icon: ShoppingCart },
-    { to: '/reserved', label: 'Готовые', icon: PackageCheck },
-    { to: '/warehouse', label: 'Склад', icon: Warehouse },
-  ],
-  admin: [
-    { to: '/', label: 'Главная', icon: LayoutDashboard },
-    { to: '/orders', label: 'Заказы', icon: ShoppingCart },
-    { to: '/reserved', label: 'Готовые', icon: PackageCheck },
-    { to: '/archive', label: 'Архив', icon: Archive },
-  ],
-  warehouse: [
-    { to: '/', label: 'Главная', icon: LayoutDashboard },
-    { to: '/warehouse', label: 'Склад', icon: Warehouse },
-    { to: '/reserved', label: 'Готовые', icon: PackageCheck },
-  ],
-};
-
-const PRODUCTION_ROLE_KEYS = ['designer', 'laser_operator', 'bender_operator', 'welder', 'painter', 'assembler'];
-
-const BottomNav = ({ role, onMore }) => {
+const BottomNav = ({ user, onMore }) => {
   const location = useLocation();
-  const items = ITEMS_BY_ROLE[role] || (PRODUCTION_ROLE_KEYS.includes(role) ? PRODUCTION_NAV : ITEMS_BY_ROLE.admin);
+  const available = ALL_ITEMS.filter(item => hasPermission(user, item.key));
+  const items = available.slice(0, 4);
+  const hasMore = available.length > 4 || user?.role === 'superadmin';
 
   return (
     <nav
@@ -47,7 +31,7 @@ const BottomNav = ({ role, onMore }) => {
           const active = location.pathname === item.to;
           return (
             <Link
-              key={item.to}
+              key={item.key}
               to={item.to}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl transition-colors min-h-[52px] ${
                 active ? 'text-[#e8de8c]' : 'text-gray-500 active:bg-white/5'
@@ -59,15 +43,17 @@ const BottomNav = ({ role, onMore }) => {
             </Link>
           );
         })}
-        <button
-          type="button"
-          onClick={onMore}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-gray-500 active:bg-white/5 transition-colors min-h-[52px]"
-          style={{ touchAction: 'manipulation' }}
-        >
-          <Menu size={22} />
-          <span className="text-[10px] font-semibold leading-none">Меню</span>
-        </button>
+        {hasMore && (
+          <button
+            type="button"
+            onClick={onMore}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-gray-500 active:bg-white/5 transition-colors min-h-[52px]"
+            style={{ touchAction: 'manipulation' }}
+          >
+            <Menu size={22} />
+            <span className="text-[10px] font-semibold leading-none">Меню</span>
+          </button>
+        )}
       </div>
     </nav>
   );

@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import {
-  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Hammer, Flame, Paintbrush, Ruler, Zap
+  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Hammer, Flame, Paintbrush, Ruler, Zap, Edit2
 } from 'lucide-react';
 import { required, minLength } from '../lib/validation';
 import { ROLES, getRoleLabel } from '../lib/roles';
+import { SECTIONS, getDefaultPermissions, getPermissions } from '../lib/permissions';
 
 const AdminManagement = () => {
-  const { users, addUser, deleteUser, currentUser, updateSelf } = useAuth();
+  const { users, addUser, deleteUser, updateUser, currentUser, updateSelf } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [showPasswords, setShowPasswords] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ name: '', password: '', role: 'admin' });
+  const [formData, setFormData] = useState({
+    name: '',
+    password: '',
+    role: 'admin',
+    permissions: getDefaultPermissions('admin'),
+  });
   const [formErrors, setFormErrors] = useState({});
 
   const [profileData, setProfileData] = useState({ name: currentUser?.name || '', password: '' });
@@ -72,18 +79,85 @@ const AdminManagement = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const errs = validateNewUser(formData);
+    const errs = editingUserId
+      ? (() => {
+          const x = {};
+          const nameErr = required(formData.name, 'Имя') || minLength(formData.name, 2, 'Имя');
+          if (nameErr) x.name = nameErr;
+          else {
+            const dup = users.find(u => u.id !== editingUserId && u.name.toLowerCase() === formData.name.trim().toLowerCase());
+            if (dup) x.name = 'Имя уже занято';
+          }
+          if (formData.password && formData.password.length < 3) x.password = 'Пароль: минимум 3 символа';
+          return x;
+        })()
+      : validateNewUser(formData);
     setFormErrors(errs);
     if (Object.keys(errs).length > 0) return;
-    addUser({ ...formData, name: formData.name.trim(), password: formData.password.trim() });
+
+    const payload = {
+      name: formData.name.trim(),
+      role: formData.role,
+      permissions: formData.permissions,
+    };
+    if (formData.password?.trim()) payload.password = formData.password.trim();
+
+    if (editingUserId) {
+      updateUser(editingUserId, payload);
+    } else {
+      addUser({ ...payload, password: formData.password.trim() });
+    }
+    closeModal();
+  };
+
+  const openCreate = () => {
+    setEditingUserId(null);
+    setFormData({ name: '', password: '', role: 'admin', permissions: getDefaultPermissions('admin') });
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (u) => {
+    if (u.role === 'superadmin') return;
+    setEditingUserId(u.id);
+    setFormData({
+      name: u.name,
+      password: '',
+      role: u.role,
+      permissions: getPermissions(u),
+    });
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', password: '', role: 'admin' });
+    setEditingUserId(null);
+    setFormData({ name: '', password: '', role: 'admin', permissions: getDefaultPermissions('admin') });
     setFormErrors({});
   };
 
   const updateForm = (key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    if (key === 'role') {
+      setFormData(prev => ({ ...prev, role: value, permissions: getDefaultPermissions(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [key]: value }));
+    }
     if (formErrors[key]) setFormErrors(prev => ({ ...prev, [key]: null }));
+  };
+
+  const togglePermission = (key) => {
+    setFormData(prev => {
+      const has = prev.permissions.includes(key);
+      return {
+        ...prev,
+        permissions: has ? prev.permissions.filter(p => p !== key) : [...prev.permissions, key],
+      };
+    });
+  };
+
+  const resetPermissionsToRole = () => {
+    setFormData(prev => ({ ...prev, permissions: getDefaultPermissions(prev.role) }));
   };
 
   const getRoleIcon = (role) => {
@@ -108,7 +182,7 @@ const AdminManagement = () => {
           <h1 className="text-2xl font-bold tracking-tight">Управление</h1>
           <p className="text-gray-500 text-sm mt-1">Персонал и настройки</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)}
+        <button onClick={openCreate}
           className="px-4 py-2.5 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors flex items-center gap-2 text-sm">
           <UserPlus size={16} /> Создать аккаунт
         </button>
@@ -213,14 +287,22 @@ const AdminManagement = () => {
                 </td>
                 <td className="px-5 py-4 text-right">
                   {u.role !== 'superadmin' && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Удалить сотрудника "${u.name}"?`)) deleteUser(u.id);
-                      }}
-                      className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(u)}
+                        className="p-2 hover:bg-white/[0.06] rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Удалить сотрудника "${u.name}"?`)) deleteUser(u.id);
+                        }}
+                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -237,12 +319,12 @@ const AdminManagement = () => {
               onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="w-full max-w-md bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10">
-              <form onSubmit={handleSubmit}>
-                <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
-                  <h2 className="text-lg font-bold">Новый пользователь</h2>
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-white/5 rounded-lg"><X size={20} /></button>
+              <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+                <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
+                  <h2 className="text-lg font-bold">{editingUserId ? 'Редактировать сотрудника' : 'Новый пользователь'}</h2>
+                  <button type="button" onClick={closeModal} className="p-1.5 hover:bg-white/5 rounded-lg"><X size={20} /></button>
                 </div>
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4 overflow-y-auto">
                   <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Имя <span className="text-red-400">*</span></label>
                     <input type="text" value={formData.name} onChange={(e) => updateForm('name', e.target.value)}
@@ -256,11 +338,13 @@ const AdminManagement = () => {
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Пароль <span className="text-red-400">*</span></label>
+                    <label className="text-xs text-gray-500 font-medium mb-1 block">
+                      Пароль {editingUserId ? <span className="text-gray-600 normal-case">(оставьте пустым, чтобы не менять)</span> : <span className="text-red-400">*</span>}
+                    </label>
                     <input type="text" value={formData.password} onChange={(e) => updateForm('password', e.target.value)}
                       className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
                         formErrors.password ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
-                      }`} placeholder="Пароль (минимум 3 символа)" />
+                      }`} placeholder={editingUserId ? '••••••••' : 'Пароль (минимум 3 символа)'} />
                     {formErrors.password && (
                       <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
                         <AlertCircle size={11} /> {formErrors.password}
@@ -275,13 +359,57 @@ const AdminManagement = () => {
                         <option key={r.key} value={r.key}>{r.label}</option>
                       ))}
                     </select>
+                    <p className="text-[10px] text-gray-600 mt-1">При смене роли разделы автоматически подстраиваются</p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-gray-500 font-medium">Доступные разделы</label>
+                      <button
+                        type="button"
+                        onClick={resetPermissionsToRole}
+                        className="text-[10px] text-[#e8de8c] hover:underline"
+                      >
+                        Сбросить к роли
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 bg-white/[0.02] rounded-xl p-3 border border-white/[0.04]">
+                      {SECTIONS.map(s => {
+                        const checked = formData.permissions.includes(s.key);
+                        return (
+                          <label
+                            key={s.key}
+                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/[0.04] cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => togglePermission(s.key)}
+                              className="sr-only"
+                            />
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                              checked ? 'bg-[#e8de8c] border-[#e8de8c]' : 'bg-white/[0.04] border-white/10'
+                            }`}>
+                              {checked && (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2.5 6L5 8.5L9.5 4" stroke="#111114" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-sm ${checked ? 'text-white' : 'text-gray-400'}`}>{s.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-                <div className="p-5 border-t border-white/[0.06] flex gap-3">
-                  <button type="button" onClick={() => setIsModalOpen(false)}
+                <div className="p-5 border-t border-white/[0.06] flex gap-3 shrink-0">
+                  <button type="button" onClick={closeModal}
                     className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-medium py-3 rounded-xl text-sm">Отмена</button>
                   <button type="submit"
-                    className="flex-[2] bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold py-3 rounded-xl text-sm">Создать</button>
+                    className="flex-[2] bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold py-3 rounded-xl text-sm">
+                    {editingUserId ? 'Сохранить' : 'Создать'}
+                  </button>
                 </div>
               </form>
             </motion.div>
