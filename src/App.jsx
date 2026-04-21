@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { OrderProvider, useOrders } from './context/OrderContext';
@@ -22,16 +22,23 @@ import {
 } from 'lucide-react';
 
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import WarehousePage from './pages/Warehouse';
-import ReservedWarehouse from './pages/ReservedWarehouse';
-import AdminManagement from './pages/AdminManagement';
-import Wholesalers from './pages/Wholesalers';
-import ArchivePage from './pages/Archive';
 import BottomNav from './components/BottomNav';
 import { PRODUCTION_ROLES, isProductionRole } from './lib/roles';
 import { hasPermission } from './lib/permissions';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Orders = lazy(() => import('./pages/Orders'));
+const WarehousePage = lazy(() => import('./pages/Warehouse'));
+const ReservedWarehouse = lazy(() => import('./pages/ReservedWarehouse'));
+const AdminManagement = lazy(() => import('./pages/AdminManagement'));
+const Wholesalers = lazy(() => import('./pages/Wholesalers'));
+const ArchivePage = lazy(() => import('./pages/Archive'));
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="w-8 h-8 border-4 border-[#e8de8c]/20 border-t-[#e8de8c] rounded-full animate-spin" />
+  </div>
+);
 
 const ProtectedRoute = ({ children, allowedRoles, permission }) => {
   const { currentUser } = useAuth();
@@ -325,6 +332,7 @@ const App = () => {
     <AuthProvider>
       <OrderProvider>
         <Router>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={
@@ -364,6 +372,7 @@ const App = () => {
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </Router>
       </OrderProvider>
     </AuthProvider>

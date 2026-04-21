@@ -1,5 +1,10 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBaVT1wtUr30hf_kWzM99uX2o7iNyW0Nco',
@@ -14,4 +19,15 @@ const firebaseConfig = {
 export const VAPID_KEY = 'BLe-gLKxeqm6rS_f56Hz_lnzDkFvoedFz8SYuhfX51rHTl_40G7Jb2z1lCLFgzkO50muRCCFBqPD1ZsEwIq-79o';
 
 export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
+} catch (err) {
+  console.warn('[firebase] persistent cache unavailable, falling back to memory:', err);
+  db = getFirestore(app);
+}
+
+export { db };
