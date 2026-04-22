@@ -23,7 +23,7 @@ import {
 
 import Login from './pages/Login';
 import BottomNav from './components/BottomNav';
-import { PRODUCTION_ROLES, isProductionRole } from './lib/roles';
+import { isProductionRole } from './lib/roles';
 import { hasPermission, firstAllowedPath } from './lib/permissions';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));

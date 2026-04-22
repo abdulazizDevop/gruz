@@ -1,28 +1,36 @@
-export const ROLES = [
+export const SYSTEM_ROLES = [
   { key: 'admin', label: 'Админ' },
-  { key: 'designer', label: 'Проектировщик' },
-  { key: 'laser_operator', label: 'Оператор лазера' },
-  { key: 'bender_operator', label: 'Оператор листогиба' },
-  { key: 'welder', label: 'Сварщик' },
-  { key: 'painter', label: 'Маляр' },
-  { key: 'assembler', label: 'Сборщик' },
   { key: 'warehouse', label: 'Склад' },
 ];
 
-export const PRODUCTION_ROLES = [
-  'designer',
-  'laser_operator',
-  'bender_operator',
-  'welder',
-  'painter',
-  'assembler',
+export const DEFAULT_DYNAMIC_LABELS = [
+  'Проектировщик',
+  'Оператор лазера',
+  'Оператор листогиба',
+  'Сварщик',
+  'Маляр',
+  'Сборщик',
 ];
 
-export const isProductionRole = (role) => PRODUCTION_ROLES.includes(role);
-export const isAdminRole = (role) => role === 'admin' || role === 'superadmin';
+const NON_PRODUCTION_KEYS = new Set(['admin', 'superadmin', 'warehouse']);
 
-export const getRoleLabel = (role) => {
-  if (role === 'superadmin') return 'Главный';
-  const found = ROLES.find((r) => r.key === role);
-  return found ? found.label : 'Сотрудник';
+export const isProductionRole = (roleKey) => !!roleKey && !NON_PRODUCTION_KEYS.has(roleKey);
+
+export const isAdminRole = (roleKey) => roleKey === 'admin' || roleKey === 'superadmin';
+
+export const getRoleLabel = (roleKey, dynamicRoles = []) => {
+  if (!roleKey) return 'Сотрудник';
+  if (roleKey === 'superadmin') return 'Главный';
+  const inSystem = SYSTEM_ROLES.find((r) => r.key === roleKey);
+  if (inSystem) return inSystem.label;
+  const inDynamic = dynamicRoles.find((r) => r.key === roleKey);
+  if (inDynamic) return inDynamic.label;
+  return roleKey;
+};
+
+export const getAllRoles = (dynamicRoles = []) => {
+  const dynamic = dynamicRoles
+    .map((r) => ({ key: r.key, label: r.label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+  return [SYSTEM_ROLES[0], ...dynamic, SYSTEM_ROLES[1]];
 };

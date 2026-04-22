@@ -60,7 +60,7 @@ const DOOR_FIELDS = [
 
 const Orders = () => {
   const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, nextOrderNumber } = useOrders();
-  const { currentUser } = useAuth();
+  const { currentUser, roles } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -281,7 +281,7 @@ const Orders = () => {
     }
     const masterName = readyMasterName.trim();
     const displayName = masterName
-      ? `${masterName} (${getRoleLabel(currentUser.role)})`
+      ? `${masterName} (${getRoleLabel(currentUser.role, roles)})`
       : currentUser.name;
 
     setReadySaving(true);

@@ -7,19 +7,18 @@ export const SECTIONS = [
   { key: 'archive', label: 'Архив' },
 ];
 
-const DEFAULTS = {
+const SYSTEM_DEFAULTS = {
   superadmin: ['dashboard', 'orders', 'wholesalers', 'warehouse', 'reserved', 'archive'],
   admin: ['dashboard', 'orders', 'wholesalers', 'reserved', 'archive'],
   warehouse: ['dashboard', 'warehouse', 'reserved'],
-  designer: ['dashboard', 'orders', 'reserved'],
-  laser_operator: ['dashboard', 'orders', 'reserved'],
-  bender_operator: ['dashboard', 'orders', 'reserved'],
-  welder: ['dashboard', 'orders', 'reserved'],
-  painter: ['dashboard', 'orders', 'reserved'],
-  assembler: ['dashboard', 'orders', 'reserved'],
 };
 
-export const getDefaultPermissions = (role) => DEFAULTS[role] ? [...DEFAULTS[role]] : ['dashboard'];
+const PRODUCTION_DEFAULTS = ['dashboard', 'orders', 'reserved'];
+
+export const getDefaultPermissions = (role) => {
+  if (SYSTEM_DEFAULTS[role]) return [...SYSTEM_DEFAULTS[role]];
+  return [...PRODUCTION_DEFAULTS];
+};
 
 export const getPermissions = (user) => {
   if (!user) return [];

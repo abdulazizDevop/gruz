@@ -2,14 +2,18 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import {
-  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Hammer, Flame, Paintbrush, Ruler, Zap, Edit2
+  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Plus, Briefcase, Edit2
 } from 'lucide-react';
 import { required, minLength } from '../lib/validation';
-import { ROLES, getRoleLabel } from '../lib/roles';
+import { getAllRoles, getRoleLabel } from '../lib/roles';
 import { SECTIONS, getDefaultPermissions, getPermissions } from '../lib/permissions';
 
 const AdminManagement = () => {
-  const { users, addUser, deleteUser, updateUser, currentUser, updateSelf } = useAuth();
+  const { users, roles, addUser, deleteUser, updateUser, currentUser, updateSelf, addRole, deleteRole, countUsersByRole } = useAuth();
+  const allRoles = getAllRoles(roles);
+  const [newRoleLabel, setNewRoleLabel] = useState('');
+  const [roleError, setRoleError] = useState('');
+  const [roleAdding, setRoleAdding] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
   const [showPasswords, setShowPasswords] = useState({});
@@ -146,6 +150,47 @@ const AdminManagement = () => {
     if (formErrors[key]) setFormErrors(prev => ({ ...prev, [key]: null }));
   };
 
+  const handleAddRole = async (e) => {
+    e.preventDefault();
+    setRoleError('');
+    const label = newRoleLabel.trim();
+    if (!label) {
+      setRoleError('Введите название');
+      return;
+    }
+    if (label.length < 2) {
+      setRoleError('Минимум 2 символа');
+      return;
+    }
+    setRoleAdding(true);
+    try {
+      await addRole(label);
+      setNewRoleLabel('');
+    } catch (err) {
+      const code = err?.message || '';
+      if (code === 'DUPLICATE') setRoleError('Такая должность уже есть');
+      else if (code === 'RESERVED') setRoleError('Это системная роль, выберите другое имя');
+      else if (code === 'TOO_SHORT') setRoleError('Минимум 2 символа');
+      else setRoleError('Не удалось сохранить');
+    } finally {
+      setRoleAdding(false);
+    }
+  };
+
+  const handleDeleteRole = async (role) => {
+    const usedBy = countUsersByRole(role.key);
+    if (usedBy > 0) {
+      window.alert(`Нельзя удалить: эту должность занимает ${usedBy} сотруд.`);
+      return;
+    }
+    if (!window.confirm(`Удалить должность "${role.label}"?`)) return;
+    try {
+      await deleteRole(role.id);
+    } catch (err) {
+      window.alert('Не удалось удалить должность');
+    }
+  };
+
   const togglePermission = (key) => {
     setFormData(prev => {
       const has = prev.permissions.includes(key);
@@ -164,14 +209,8 @@ const AdminManagement = () => {
     switch (role) {
       case 'superadmin': return <Shield className="text-[#e8de8c]" size={16} />;
       case 'admin': return <ShoppingCart className="text-blue-400" size={16} />;
-      case 'designer': return <Ruler className="text-cyan-400" size={16} />;
-      case 'laser_operator': return <Zap className="text-fuchsia-400" size={16} />;
-      case 'bender_operator': return <Hammer className="text-orange-400" size={16} />;
-      case 'welder': return <Flame className="text-red-400" size={16} />;
-      case 'painter': return <Paintbrush className="text-pink-400" size={16} />;
-      case 'assembler': return <Wrench className="text-emerald-400" size={16} />;
       case 'warehouse': return <Package className="text-amber-400" size={16} />;
-      default: return null;
+      default: return <Wrench className="text-emerald-400" size={16} />;
     }
   };
 
@@ -238,6 +277,83 @@ const AdminManagement = () => {
         </form>
       </div>
 
+      {/* Roles management */}
+      <div className="bg-[#111114] border border-white/[0.06] rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-white/[0.06] flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#e8de8c]/10 rounded-xl flex items-center justify-center text-[#e8de8c]">
+            <Briefcase size={18} />
+          </div>
+          <div>
+            <h2 className="font-semibold">Должности</h2>
+            <p className="text-xs text-gray-500">Добавьте свои роли — они появятся в списке при создании сотрудника</p>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <form onSubmit={handleAddRole} className="flex gap-2">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={newRoleLabel}
+                onChange={(e) => { setNewRoleLabel(e.target.value); if (roleError) setRoleError(''); }}
+                placeholder="Например: Подготовщик"
+                className={`w-full bg-white/[0.04] border rounded-xl py-3 px-4 focus:outline-none text-sm ${
+                  roleError ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+                }`}
+              />
+              {roleError && (
+                <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                  <AlertCircle size={11} /> {roleError}
+                </p>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={roleAdding || !newRoleLabel.trim()}
+              className="px-5 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] disabled:opacity-50 text-black font-semibold rounded-xl text-sm flex items-center gap-2 shrink-0"
+            >
+              <Plus size={16} /> Добавить
+            </button>
+          </form>
+
+          {roles.length === 0 ? (
+            <p className="text-sm text-gray-600 text-center py-4">Пока нет должностей</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {[...roles].sort((a, b) => (a.label || '').localeCompare(b.label || '', 'ru')).map((role) => {
+                const used = countUsersByRole(role.key);
+                return (
+                  <div
+                    key={role.id}
+                    className="flex items-center justify-between gap-2 p-3 bg-white/[0.03] border border-white/[0.04] rounded-xl"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Wrench size={14} className="text-emerald-400 shrink-0" />
+                      <span className="text-sm font-medium truncate">{role.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                        used > 0 ? 'bg-blue-500/10 text-blue-400' : 'bg-white/[0.04] text-gray-500'
+                      }`}>
+                        {used > 0 ? `${used} чел.` : '—'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRole(role)}
+                        disabled={used > 0}
+                        title={used > 0 ? 'Удалите сначала сотрудников с этой должностью' : 'Удалить'}
+                        className="p-1.5 hover:bg-red-500/10 text-gray-500 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Users table */}
       <div className="bg-[#111114] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
@@ -273,7 +389,7 @@ const AdminManagement = () => {
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
                     {getRoleIcon(u.role)}
-                    <span className="text-sm text-gray-400">{getRoleLabel(u.role)}</span>
+                    <span className="text-sm text-gray-400">{getRoleLabel(u.role, roles)}</span>
                   </div>
                 </td>
                 <td className="px-5 py-4">
@@ -357,7 +473,7 @@ const AdminManagement = () => {
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Роль</label>
                     <select value={formData.role} onChange={(e) => updateForm('role', e.target.value)}
                       className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm text-gray-300 appearance-none">
-                      {ROLES.map(r => (
+                      {allRoles.map(r => (
                         <option key={r.key} value={r.key}>{r.label}</option>
                       ))}
                     </select>
