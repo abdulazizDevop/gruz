@@ -37,3 +37,21 @@ export const hasPermission = (user, key) => {
   if (key === 'admins') return user.role === 'superadmin';
   return getPermissions(user).includes(key);
 };
+
+const ROUTE_ORDER = [
+  { permission: 'dashboard', path: '/' },
+  { permission: 'orders', path: '/orders' },
+  { permission: 'reserved', path: '/reserved' },
+  { permission: 'warehouse', path: '/warehouse' },
+  { permission: 'wholesalers', path: '/wholesalers' },
+  { permission: 'archive', path: '/archive' },
+];
+
+export const firstAllowedPath = (user) => {
+  if (!user) return '/login';
+  for (const r of ROUTE_ORDER) {
+    if (hasPermission(user, r.permission)) return r.path;
+  }
+  if (user.role === 'superadmin') return '/admins';
+  return '/login';
+};

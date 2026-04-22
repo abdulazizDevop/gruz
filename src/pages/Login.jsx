@@ -5,13 +5,14 @@ import { motion } from 'framer-motion';
 import { Lock, User, ChevronRight } from 'lucide-react';
 import { requestNotificationPermission } from '../lib/notifications';
 import InstallPWA from '../components/InstallPWA';
+import { firstAllowedPath } from '../lib/permissions';
 
 const Login = () => {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loaded } = useAuth();
+  const { login, loaded, users } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -38,7 +39,16 @@ const Login = () => {
     setTimeout(async () => {
       if (login(name.trim(), password)) {
         requestNotificationPermission();
-        navigate('/');
+        const fresh = users.find(
+          u => u.name.toLowerCase() === name.trim().toLowerCase() && u.password === password
+        );
+        const target = firstAllowedPath(fresh);
+        if (target === '/login') {
+          setError('У этого сотрудника нет доступных разделов. Обратитесь к администратору.');
+          setIsLoading(false);
+          return;
+        }
+        navigate(target, { replace: true });
       } else {
         setError('Неверное имя пользователя или пароль');
         setIsLoading(false);

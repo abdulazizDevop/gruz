@@ -24,7 +24,7 @@ import {
 import Login from './pages/Login';
 import BottomNav from './components/BottomNav';
 import { PRODUCTION_ROLES, isProductionRole } from './lib/roles';
-import { hasPermission } from './lib/permissions';
+import { hasPermission, firstAllowedPath } from './lib/permissions';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Orders = lazy(() => import('./pages/Orders'));
@@ -42,14 +42,16 @@ const PageLoader = () => (
 
 const ProtectedRoute = ({ children, allowedRoles, permission }) => {
   const { currentUser } = useAuth();
+  const location = useLocation();
   if (!currentUser) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-    return <Navigate to="/" replace />;
-  }
-  if (permission && !hasPermission(currentUser, permission)) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
+
+  const roleOk = !allowedRoles || allowedRoles.includes(currentUser.role);
+  const permOk = !permission || hasPermission(currentUser, permission);
+  if (roleOk && permOk) return children;
+
+  const target = firstAllowedPath(currentUser);
+  if (target === location.pathname) return children;
+  return <Navigate to={target} replace />;
 };
 
 const SidebarItem = ({ to, icon: Icon, label, active, collapsed }) => (
