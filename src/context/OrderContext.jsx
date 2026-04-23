@@ -327,6 +327,12 @@ export const OrderProvider = ({ children }) => {
     await setDoc(doc(db, 'meta', 'backup'), next, { merge: true });
   };
 
+  const setNextOrderNumberValue = async (value) => {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n) || n < 1) throw new Error('INVALID_NUMBER');
+    await setDoc(doc(db, 'meta', 'counter'), { nextOrderNumber: n }, { merge: true });
+  };
+
   return (
     <OrderContext.Provider
       value={{
@@ -349,6 +355,7 @@ export const OrderProvider = ({ children }) => {
         deleteWholesaler,
         setBackupConfig,
         backupConfig,
+        setNextOrderNumberValue,
         addNotification,
       }}
     >

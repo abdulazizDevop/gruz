@@ -1,19 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import {
-  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Plus, Briefcase, Edit2
+  UserPlus, Search, Shield, Trash2, X, Eye, EyeOff, Package, ShoppingCart, Wrench, Settings, AlertCircle, Plus, Briefcase, Edit2, Hash
 } from 'lucide-react';
+import { useOrders } from '../context/OrderContext';
 import { required, minLength } from '../lib/validation';
 import { getAllRoles, getRoleLabel } from '../lib/roles';
 import { SECTIONS, getDefaultPermissions, getPermissions } from '../lib/permissions';
 
 const AdminManagement = () => {
   const { users, roles, addUser, deleteUser, updateUser, currentUser, updateSelf, addRole, deleteRole, countUsersByRole } = useAuth();
+  const { nextOrderNumber, setNextOrderNumberValue } = useOrders();
   const allRoles = getAllRoles(roles);
   const [newRoleLabel, setNewRoleLabel] = useState('');
   const [roleError, setRoleError] = useState('');
   const [roleAdding, setRoleAdding] = useState(false);
+  const [counterInput, setCounterInput] = useState('');
+  const [counterSaving, setCounterSaving] = useState(false);
+  const [counterSuccess, setCounterSuccess] = useState(false);
+  const [counterError, setCounterError] = useState('');
+
+  useEffect(() => {
+    setCounterInput(String(nextOrderNumber || ''));
+  }, [nextOrderNumber]);
+
+  const handleCounterSave = async (e) => {
+    e.preventDefault();
+    setCounterError('');
+    setCounterSuccess(false);
+    const n = parseInt(counterInput, 10);
+    if (!Number.isFinite(n) || n < 1) {
+      setCounterError('Введите положительное число');
+      return;
+    }
+    setCounterSaving(true);
+    try {
+      await setNextOrderNumberValue(n);
+      setCounterSuccess(true);
+      setTimeout(() => setCounterSuccess(false), 2500);
+    } catch (err) {
+      setCounterError('Не удалось сохранить');
+    } finally {
+      setCounterSaving(false);
+    }
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
   const [showPasswords, setShowPasswords] = useState({});
@@ -352,6 +383,51 @@ const AdminManagement = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Order counter */}
+      <div className="bg-[#111114] border border-white/[0.06] rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-white/[0.06] flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#e8de8c]/10 rounded-xl flex items-center justify-center text-[#e8de8c]">
+            <Hash size={18} />
+          </div>
+          <div>
+            <h2 className="font-semibold">Нумерация заказов</h2>
+            <p className="text-xs text-gray-500">Номер, который получит следующий созданный заказ</p>
+          </div>
+        </div>
+        <form onSubmit={handleCounterSave} className="p-5 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+          <div className="flex-1">
+            <label className="text-xs text-gray-500 font-medium mb-1 block">Следующий номер заказа</label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={counterInput}
+              onChange={(e) => { setCounterInput(e.target.value); if (counterError) setCounterError(''); if (counterSuccess) setCounterSuccess(false); }}
+              className={`w-full bg-white/[0.04] border rounded-xl py-3 px-4 focus:outline-none text-sm ${
+                counterError ? 'border-red-500/50' : 'border-white/[0.06] focus:border-[#e8de8c]/30'
+              }`}
+            />
+            {counterError && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle size={11} /> {counterError}
+              </p>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={counterSaving || String(nextOrderNumber) === String(counterInput).trim()}
+            className="px-6 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] disabled:opacity-50 text-black font-semibold rounded-xl text-sm shrink-0"
+          >
+            {counterSaving ? 'Сохранение...' : 'Сохранить'}
+          </button>
+          {counterSuccess && (
+            <span className="text-emerald-400 text-sm font-medium flex items-center gap-1 self-center">
+              ✓ Сохранено
+            </span>
+          )}
+        </form>
       </div>
 
       {/* Users table */}

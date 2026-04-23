@@ -18,6 +18,7 @@ const EMPTY_ORDER = {
   model: '',
   size: '',
   canvas: '',
+  opening: '',
   color: '',
   casing: '',
   glass: '',
@@ -42,10 +43,16 @@ const CANVAS_OPTIONS = [
   { value: 'Двустворчатый', label: 'Двустворчатый' },
 ];
 
+const OPENING_OPTIONS = [
+  { value: 'Левое', label: 'Левое' },
+  { value: 'Правое', label: 'Правое' },
+];
+
 const DOOR_FIELDS = [
   { key: 'model', label: 'Модель' },
   { key: 'size', label: 'Размер' },
   { key: 'canvas', label: 'Полотно' },
+  { key: 'opening', label: 'Открывание' },
   { key: 'color', label: 'Цвет' },
   { key: 'casing', label: 'Наличник' },
   { key: 'glass', label: 'Стекло' },
@@ -166,6 +173,7 @@ const Orders = () => {
       model: order.model || '',
       size: order.size || '',
       canvas: order.canvas || '',
+      opening: order.opening || '',
       color: order.color || '',
       casing: order.casing || '',
       glass: order.glass || '',
@@ -836,6 +844,19 @@ const Orders = () => {
                         </select>
                       </div>
                       <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Открывание</label>
+                        <select
+                          value={newOrder.opening}
+                          onChange={(e) => updateField('opening', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm appearance-none"
+                        >
+                          <option value="">Не выбрано</option>
+                          {OPENING_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Цвет</label>
                         <input
                           type="text"
@@ -845,7 +866,7 @@ const Orders = () => {
                           placeholder="Напр. Венге"
                         />
                       </div>
-                      {DOOR_FIELDS.filter(f => !['model', 'size', 'canvas', 'color'].includes(f.key)).map(f => (
+                      {DOOR_FIELDS.filter(f => !['model', 'size', 'canvas', 'opening', 'color'].includes(f.key)).map(f => (
                         <div key={f.key}>
                           <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">{f.label}</label>
                           <input
