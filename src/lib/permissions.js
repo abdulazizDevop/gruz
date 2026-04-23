@@ -7,9 +7,17 @@ export const SECTIONS = [
   { key: 'archive', label: 'Архив' },
 ];
 
+export const FEATURE_FLAGS = [
+  { key: 'client_info', label: 'Видеть данные клиента (имя, адрес, цена)' },
+  { key: 'set_urgent', label: 'Ставить статус «Срочное»' },
+  { key: 'manage_wholesalers', label: 'Добавлять и изменять оптовиков' },
+];
+
+const ALL_KEYS = [...SECTIONS.map(s => s.key), ...FEATURE_FLAGS.map(f => f.key)];
+
 const SYSTEM_DEFAULTS = {
-  superadmin: ['dashboard', 'orders', 'wholesalers', 'warehouse', 'reserved', 'archive'],
-  admin: ['dashboard', 'orders', 'wholesalers', 'reserved', 'archive'],
+  superadmin: ALL_KEYS,
+  admin: ['dashboard', 'orders', 'wholesalers', 'reserved', 'archive', 'client_info', 'set_urgent', 'manage_wholesalers'],
   warehouse: ['dashboard', 'warehouse', 'reserved'],
 };
 
@@ -22,9 +30,7 @@ export const getDefaultPermissions = (role) => {
 
 export const getPermissions = (user) => {
   if (!user) return [];
-  if (user.role === 'superadmin') {
-    return ['dashboard', 'orders', 'wholesalers', 'warehouse', 'reserved', 'archive', 'admins'];
-  }
+  if (user.role === 'superadmin') return [...ALL_KEYS, 'admins'];
   if (Array.isArray(user.permissions) && user.permissions.length > 0) {
     return user.permissions;
   }

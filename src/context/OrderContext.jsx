@@ -59,7 +59,6 @@ export const OrderProvider = ({ children }) => {
   const { currentUser } = useAuth();
 
   const [orders, setOrders] = useState([]);
-  const [salesHistory, setSalesHistory] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [wholesalers, setWholesalers] = useState([]);
   const [nextOrderNumber, setNextOrderNumber] = useState(370);
@@ -117,12 +116,6 @@ export const OrderProvider = ({ children }) => {
       prevOrderStatusRef.current = next;
 
       setOrders(list);
-    }));
-
-    unsubs.push(onSnapshot(collection(db, 'sales'), snap => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      list.sort((a, b) => (b.shippedAt || '').localeCompare(a.shippedAt || ''));
-      setSalesHistory(list);
     }));
 
     unsubs.push(onSnapshot(collection(db, 'inventory'), snap => {
@@ -337,7 +330,6 @@ export const OrderProvider = ({ children }) => {
     <OrderContext.Provider
       value={{
         orders,
-        salesHistory,
         inventory,
         wholesalers,
         notifications,

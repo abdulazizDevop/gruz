@@ -8,6 +8,7 @@ import {
 import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
 import { uploadImage } from '../lib/uploads';
 import { isProductionRole, getRoleLabel } from '../lib/roles';
+import { hasPermission } from '../lib/permissions';
 
 const formatMoney = (v) => {
   const n = Number(v || 0);
@@ -92,6 +93,8 @@ const Orders = () => {
   const isSuperAdmin = currentUser?.role === 'superadmin';
   const isAssembler = isProductionRole(currentUser?.role);
   const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
+  const canSeeClient = hasPermission(currentUser, 'client_info');
+  const canSetUrgent = hasPermission(currentUser, 'set_urgent');
 
   const visibleOrders = isSuperAdmin
     ? orders
@@ -395,7 +398,7 @@ const Orders = () => {
                   }`}>#{order.code}</div>
                   <div>
                     <h3 className="font-semibold group-hover:text-[#e8de8c] transition-colors">
-                      {order.client?.name || 'Без имени'}
+                      {canSeeClient ? (order.client?.name || 'Без имени') : `Заказ #${order.code}`}
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
                       <Calendar size={10} />
@@ -437,16 +440,18 @@ const Orders = () => {
               )}
 
               {/* Price footer */}
-              <div className="mt-4 flex items-center justify-between pt-4 border-t border-white/[0.04]">
-                <div>
-                  <p className="text-xs text-gray-500">Телефон</p>
-                  <p className="text-sm font-medium">{order.client?.phone || '—'}</p>
+              {canSeeClient && (
+                <div className="mt-4 flex items-center justify-between pt-4 border-t border-white/[0.04]">
+                  <div>
+                    <p className="text-xs text-gray-500">Телефон</p>
+                    <p className="text-sm font-medium">{order.client?.phone || '—'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Цена</p>
+                    <p className="text-lg font-bold">{formatMoney(order.price)} ₽</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Цена</p>
-                  <p className="text-lg font-bold">{formatMoney(order.price)} ₽</p>
-                </div>
-              </div>
+              )}
 
               {order.responseRoom?.length > 0 && (
                 <div className="mt-3 px-3 py-2 bg-blue-500/5 rounded-lg flex items-center gap-2">
@@ -507,7 +512,7 @@ const Orders = () => {
                     #{activeSelected.code}
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">{activeSelected.client?.name || 'Без имени'}</h2>
+                    <h2 className="text-lg font-bold">{canSeeClient ? (activeSelected.client?.name || 'Без имени') : `Заказ #${activeSelected.code}`}</h2>
                     <p className="text-xs text-gray-500">
                       Создал: {activeSelected.adminName} • {new Date(activeSelected.createdAt).toLocaleString('ru-RU')}
                     </p>
@@ -537,18 +542,23 @@ const Orders = () => {
                   <section>
                     <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">Статус</h4>
                     <div className="flex gap-2 flex-wrap">
-                      {['🚨 Срочное', '💭 В процессе', '✅ Сделано'].map(s => (
-                        <button
-                          key={s}
-                          onClick={() => updateOrderStatus(activeSelected.id, s, currentUser.id, currentUser.name)}
-                          disabled={!isAdmin && !isAssembler}
-                          className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                            activeSelected.status === s ? 'bg-[#e8de8c] text-black' : 'bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]'
-                          } disabled:opacity-50`}
-                        >
-                          {s}
-                        </button>
-                      ))}
+                      {['🚨 Срочное', '💭 В процессе', '✅ Сделано'].map(s => {
+                        const isUrgentBtn = s.includes('🚨');
+                        const disabled = (!isAdmin && !isAssembler) || (isUrgentBtn && !canSetUrgent);
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => updateOrderStatus(activeSelected.id, s, currentUser.id, currentUser.name)}
+                            disabled={disabled}
+                            title={isUrgentBtn && !canSetUrgent ? 'Нет права ставить «Срочное»' : undefined}
+                            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              activeSelected.status === s ? 'bg-[#e8de8c] text-black' : 'bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]'
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
+                          >
+                            {s}
+                          </button>
+                        );
+                      })}
                     </div>
                   </section>
 
@@ -575,6 +585,7 @@ const Orders = () => {
                   )}
 
                   {/* Client & Payment */}
+                  {canSeeClient && (
                   <section>
                     <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">Клиент и оплата</h4>
                     <div className="space-y-2">
@@ -615,6 +626,7 @@ const Orders = () => {
                       </div>
                     </div>
                   </section>
+                  )}
 
                   {/* Photos */}
                   {activeSelected.photos?.length > 0 && (
@@ -1019,16 +1031,18 @@ const Orders = () => {
                         </div>
                       </div>
 
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input type="checkbox" checked={newOrder.isUrgent} onChange={(e) => updateField('isUrgent', e.target.checked)} className="sr-only" />
-                          <div className={`w-10 h-5 rounded-full transition-colors ${newOrder.isUrgent ? 'bg-red-500' : 'bg-white/10'}`} />
-                          <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${newOrder.isUrgent ? 'translate-x-5' : ''}`} />
-                        </div>
-                        <span className={`text-sm font-medium ${newOrder.isUrgent ? 'text-red-400' : 'text-gray-500'}`}>
-                          {newOrder.isUrgent ? '🚨 Срочный заказ' : 'Обычный заказ'}
-                        </span>
-                      </label>
+                      {canSetUrgent && (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <div className="relative">
+                            <input type="checkbox" checked={newOrder.isUrgent} onChange={(e) => updateField('isUrgent', e.target.checked)} className="sr-only" />
+                            <div className={`w-10 h-5 rounded-full transition-colors ${newOrder.isUrgent ? 'bg-red-500' : 'bg-white/10'}`} />
+                            <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${newOrder.isUrgent ? 'translate-x-5' : ''}`} />
+                          </div>
+                          <span className={`text-sm font-medium ${newOrder.isUrgent ? 'text-red-400' : 'text-gray-500'}`}>
+                            {newOrder.isUrgent ? '🚨 Срочный заказ' : 'Обычный заказ'}
+                          </span>
+                        </label>
+                      )}
                     </div>
                   </section>
                 </div>

@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
+import { useSales } from '../hooks/useSales';
+import { hasPermission } from '../lib/permissions';
 import {
   Search, Archive as ArchiveIcon, FileDown, Calendar, Phone, MapPin, User,
   DoorOpen, Truck, X, Package, TrendingUp, DollarSign, Users as UsersIcon
@@ -33,8 +35,9 @@ const getClientAddress = (s) => s.client?.address || s.clientAddress || '';
 const getPrice = (s) => s.price || s.total || 0;
 
 const Archive = () => {
-  const { salesHistory } = useOrders();
   const { currentUser } = useAuth();
+  const salesHistory = useSales();
+  const canSeeClient = hasPermission(currentUser, 'client_info');
   const [searchTerm, setSearchTerm] = useState('');
   const [selected, setSelected] = useState(null);
   const [viewImage, setViewImage] = useState(null);
@@ -69,16 +72,19 @@ const Archive = () => {
   }, [salesHistory, searchTerm, fromDate, toDate, currentUser, isSuperAdmin]);
 
   const stats = useMemo(() => {
-    const totalRevenue = visible.reduce((acc, s) => acc + getPrice(s), 0);
-    const uniqueClients = new Set(
-      visible.map(s => `${getClientName(s)}|${getClientPhone(s)}`).filter(k => k !== 'Без имени|')
-    ).size;
-    return [
+    const list = [
       { label: 'Продано дверей', value: visible.length, icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-      { label: 'Сумма продаж', value: `${formatMoney(totalRevenue)} ₽`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-      { label: 'Уникальных клиентов', value: uniqueClients, icon: UsersIcon, color: 'text-amber-400', bg: 'bg-amber-500/10' },
     ];
-  }, [visible]);
+    if (canSeeClient) {
+      const totalRevenue = visible.reduce((acc, s) => acc + getPrice(s), 0);
+      const uniqueClients = new Set(
+        visible.map(s => `${getClientName(s)}|${getClientPhone(s)}`).filter(k => k !== 'Без имени|')
+      ).size;
+      list.push({ label: 'Сумма продаж', value: `${formatMoney(totalRevenue)} ₽`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10' });
+      list.push({ label: 'Уникальных клиентов', value: uniqueClients, icon: UsersIcon, color: 'text-amber-400', bg: 'bg-amber-500/10' });
+    }
+    return list;
+  }, [visible, canSeeClient]);
 
   const handleExport = () => {
     const rows = visible.map(s => ({
@@ -205,7 +211,7 @@ const Archive = () => {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate group-hover:text-[#e8de8c] transition-colors">
-                      {getClientName(s)}
+                      {canSeeClient ? getClientName(s) : '•••'}
                     </h3>
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                       <Truck size={10} />
@@ -236,11 +242,11 @@ const Archive = () => {
               <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Телефон</p>
-                  <p className="text-xs font-medium truncate">{getClientPhone(s) || '—'}</p>
+                  <p className="text-xs font-medium truncate">{canSeeClient ? (getClientPhone(s) || '—') : '•••'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-500">Сумма</p>
-                  <p className="text-base font-bold text-emerald-400">{formatMoney(getPrice(s))} ₽</p>
+                  <p className="text-base font-bold text-emerald-400">{canSeeClient ? `${formatMoney(getPrice(s))} ₽` : '•••'}</p>
                 </div>
               </div>
             </motion.div>
@@ -283,7 +289,7 @@ const Archive = () => {
                     #{selected.code || '—'}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-lg font-bold truncate">{getClientName(selected)}</h2>
+                    <h2 className="text-lg font-bold truncate">{canSeeClient ? getClientName(selected) : '•••'}</h2>
                     <p className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                       {selected.createdAt && (
                         <span className="flex items-center gap-1">
@@ -325,6 +331,7 @@ const Archive = () => {
                   </div>
                 )}
 
+                {canSeeClient && (
                 <section>
                   <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">Клиент и оплата</h4>
                   <div className="space-y-2">
@@ -365,6 +372,7 @@ const Archive = () => {
                     </div>
                   </div>
                 </section>
+                )}
 
                 {(selected.adminName || selected.assemblerName) && (
                   <section>

@@ -2,6 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
+import { useSales } from '../hooks/useSales';
+import { hasPermission } from '../lib/permissions';
 import * as XLSX from 'xlsx';
 import {
   TrendingUp,
@@ -39,10 +41,11 @@ const StatCard = ({ title, value, icon: Icon, trend, delay }) => (
 );
 
 const Dashboard = () => {
-  const { orders, salesHistory, inventory, wholesalers } = useOrders();
+  const { orders, inventory, wholesalers } = useOrders();
   const { currentUser } = useAuth();
-
   const isSuperAdmin = currentUser?.role === 'superadmin';
+  const salesHistory = useSales(isSuperAdmin);
+  const canSeeClient = hasPermission(currentUser, 'client_info');
 
   const handleManualBackup = () => {
     // Заказы
@@ -121,7 +124,9 @@ const Dashboard = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Всего активных заказов" value={visibleOrders.length} icon={ShoppingCart} trend={12} delay={0.05} />
-        <StatCard title="Общая сумма продаж" value={`${totalSales.toLocaleString()} ₽`} icon={TrendingUp} trend={8} delay={0.1} />
+        {canSeeClient && (
+          <StatCard title="Общая сумма продаж" value={`${totalSales.toLocaleString()} ₽`} icon={TrendingUp} trend={8} delay={0.1} />
+        )}
         <StatCard title="Дверей на складе (шт.)" value={inventory.reduce((acc, i) => acc + (i.qty || 0), 0)} icon={Package} trend={-2} delay={0.15} />
         <StatCard title="База оптовиков" value={wholesalers.length} icon={Users} trend={5} delay={0.2} />
       </div>
@@ -156,7 +161,7 @@ const Dashboard = () => {
                   <tr key={order.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                     <td className="px-5 py-4 text-sm font-semibold text-[#e8de8c]">#{order.code}</td>
                     <td className="px-5 py-4">
-                      <p className="text-sm font-medium">{order.client?.name || 'Без имени'}</p>
+                      <p className="text-sm font-medium">{canSeeClient ? (order.client?.name || 'Без имени') : '•••'}</p>
                       <p className="text-xs text-gray-500">{order.wholesaler ? 'Оптовик' : 'Розница'}</p>
                     </td>
                     <td className="px-5 py-4">
@@ -166,7 +171,9 @@ const Dashboard = () => {
                         'bg-blue-500/10 text-blue-400'
                       }`}>{order.status}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm font-semibold">{(order.price || order.total || 0).toLocaleString('ru-RU')} ₽</td>
+                    <td className="px-5 py-4 text-sm font-semibold">
+                      {canSeeClient ? `${(order.price || order.total || 0).toLocaleString('ru-RU')} ₽` : '•••'}
+                    </td>
                     <td className="px-5 py-4 text-xs text-gray-500 text-right">{new Date(order.createdAt).toLocaleDateString('ru-RU')}</td>
                   </tr>
                 ))}

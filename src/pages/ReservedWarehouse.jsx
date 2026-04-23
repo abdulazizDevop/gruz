@@ -1,13 +1,32 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
-import { PackageCheck, Calendar, Clock, AlertCircle, ArrowRight, Warehouse, DoorOpen } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { PackageCheck, Calendar, Clock, AlertCircle, ArrowRight, Warehouse, DoorOpen, Search } from 'lucide-react';
+import { hasPermission } from '../lib/permissions';
 
 const formatMoney = (v) => Number(v || 0).toLocaleString('ru-RU');
 
 const ReservedWarehouse = () => {
   const { orders, markShipped } = useOrders();
-  const reservedOrders = orders.filter(o => o.status?.includes('✅'));
+  const { currentUser } = useAuth();
+  const canSeeClient = hasPermission(currentUser, 'client_info');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const reservedOrders = useMemo(() => {
+    const base = orders.filter(o => o.status?.includes('✅'));
+    if (!searchTerm.trim()) return base;
+    const q = searchTerm.trim().toLowerCase();
+    return base.filter(o => {
+      return (
+        String(o.code || '').includes(q) ||
+        (o.client?.name || '').toLowerCase().includes(q) ||
+        (o.client?.phone || '').toLowerCase().includes(q) ||
+        (o.wholesaler?.name || '').toLowerCase().includes(q) ||
+        (o.model || '').toLowerCase().includes(q)
+      );
+    });
+  }, [orders, searchTerm]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -27,6 +46,19 @@ const ReservedWarehouse = () => {
         )}
       </div>
 
+      <div className="bg-[#111114] border border-white/[0.06] rounded-2xl p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+          <input
+            type="text"
+            placeholder={canSeeClient ? 'Поиск по коду, клиенту, оптовику, модели...' : 'Поиск по коду или модели...'}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl py-2.5 pl-9 pr-4 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+          />
+        </div>
+      </div>
+
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {reservedOrders.map((order, idx) => (
@@ -36,7 +68,7 @@ const ReservedWarehouse = () => {
               initial={{ opacity: 0, x: -12 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ delay: idx * 0.05 }}
+              transition={{ delay: Math.min(idx * 0.05, 0.3) }}
               className="bg-[#111114] border border-white/[0.06] rounded-2xl p-6 hover:border-[#e8de8c]/20 transition-all group"
             >
               <div className="flex flex-col lg:flex-row items-center gap-6">
@@ -47,7 +79,9 @@ const ReservedWarehouse = () => {
                   </div>
                   <div>
                     <p className="text-xs text-[#e8de8c] font-medium mb-0.5">#{order.code}</p>
-                    <h3 className="text-lg font-bold">{order.client?.name || 'Без имени'}</h3>
+                    <h3 className="text-lg font-bold">
+                      {canSeeClient ? (order.client?.name || 'Без имени') : `Заказ #${order.code}`}
+                    </h3>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-xs text-gray-500 flex items-center gap-1">
                         <Calendar size={10} /> {new Date(order.createdAt).toLocaleDateString('ru-RU')}
@@ -76,7 +110,9 @@ const ReservedWarehouse = () => {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 mb-1">Цена</p>
-                    <p className="text-sm font-bold text-[#e8de8c]">{formatMoney(order.price)} ₽</p>
+                    <p className="text-sm font-bold text-[#e8de8c]">
+                      {canSeeClient ? `${formatMoney(order.price)} ₽` : '•••'}
+                    </p>
                   </div>
                 </div>
 
@@ -99,8 +135,12 @@ const ReservedWarehouse = () => {
               <div className="w-16 h-16 bg-white/[0.04] rounded-2xl flex items-center justify-center text-gray-700 mb-4">
                 <Warehouse size={32} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-500">Склад пуст</h3>
-              <p className="text-sm text-gray-600 mt-1 max-w-xs">Заказы появятся здесь после отметки сборщиком</p>
+              <h3 className="text-lg font-semibold text-gray-500">
+                {searchTerm ? 'Ничего не найдено' : 'Склад пуст'}
+              </h3>
+              <p className="text-sm text-gray-600 mt-1 max-w-xs">
+                {searchTerm ? 'Попробуйте изменить запрос' : 'Заказы появятся здесь после отметки сборщиком'}
+              </p>
             </motion.div>
           )}
         </AnimatePresence>

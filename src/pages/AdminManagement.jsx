@@ -7,7 +7,7 @@ import {
 import { useOrders } from '../context/OrderContext';
 import { required, minLength } from '../lib/validation';
 import { getAllRoles, getRoleLabel } from '../lib/roles';
-import { SECTIONS, getDefaultPermissions, getPermissions } from '../lib/permissions';
+import { SECTIONS, FEATURE_FLAGS, getDefaultPermissions, getPermissions } from '../lib/permissions';
 
 const AdminManagement = () => {
   const { users, roles, addUser, deleteUser, updateUser, currentUser, updateSelf, addRole, deleteRole, countUsersByRole } = useAuth();
@@ -591,6 +591,38 @@ const AdminManagement = () => {
                               )}
                             </div>
                             <span className={`text-sm ${checked ? 'text-white' : 'text-gray-400'}`}>{s.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-500 font-medium mb-2 block">Дополнительные права</label>
+                    <div className="space-y-1.5 bg-white/[0.02] rounded-xl p-3 border border-white/[0.04]">
+                      {FEATURE_FLAGS.map(f => {
+                        const checked = formData.permissions.includes(f.key);
+                        return (
+                          <label
+                            key={f.key}
+                            className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/[0.04] cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => togglePermission(f.key)}
+                              className="sr-only"
+                            />
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors shrink-0 mt-0.5 ${
+                              checked ? 'bg-[#e8de8c] border-[#e8de8c]' : 'bg-white/[0.04] border-white/10'
+                            }`}>
+                              {checked && (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2.5 6L5 8.5L9.5 4" stroke="#111114" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-sm leading-snug ${checked ? 'text-white' : 'text-gray-400'}`}>{f.label}</span>
                           </label>
                         );
                       })}
