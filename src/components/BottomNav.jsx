@@ -18,7 +18,6 @@ const BottomNav = ({ user, onMore }) => {
   const location = useLocation();
   const available = ALL_ITEMS.filter(item => hasPermission(user, item.key));
   const items = available.slice(0, 4);
-  const hasMore = available.length > 4 || user?.role === 'superadmin';
 
   return (
     <nav
@@ -43,17 +42,16 @@ const BottomNav = ({ user, onMore }) => {
             </Link>
           );
         })}
-        {hasMore && (
-          <button
-            type="button"
-            onClick={onMore}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-gray-500 active:bg-white/5 transition-colors min-h-[52px]"
-            style={{ touchAction: 'manipulation' }}
-          >
-            <Menu size={22} />
-            <span className="text-[10px] font-semibold leading-none">Меню</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onMore}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-gray-500 active:bg-white/5 transition-colors min-h-[52px]"
+          style={{ touchAction: 'manipulation' }}
+          aria-label="Меню и выход"
+        >
+          <Menu size={22} />
+          <span className="text-[10px] font-semibold leading-none">Меню</span>
+        </button>
       </div>
     </nav>
   );

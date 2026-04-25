@@ -68,7 +68,7 @@ const DOOR_FIELDS = [
 
 const Orders = () => {
   const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, nextOrderNumber } = useOrders();
-  const { currentUser, roles } = useAuth();
+  const { currentUser, users, roles } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -96,9 +96,10 @@ const Orders = () => {
   const canSeeClient = hasPermission(currentUser, 'client_info');
   const canSetUrgent = hasPermission(currentUser, 'set_urgent');
 
-  const visibleOrders = isSuperAdmin
+  const superadminIds = users.filter(u => u.role === 'superadmin').map(u => u.id);
+  const visibleOrders = (isSuperAdmin || isAssembler)
     ? orders
-    : orders.filter(o => o.adminId === currentUser?.id || isAssembler);
+    : orders.filter(o => o.adminId === currentUser?.id || superadminIds.includes(o.adminId));
 
   const filteredOrders = visibleOrders.filter(o => {
     const q = searchTerm.toLowerCase();
@@ -441,14 +442,18 @@ const Orders = () => {
 
               {/* Price footer */}
               {canSeeClient && (
-                <div className="mt-4 flex items-center justify-between pt-4 border-t border-white/[0.04]">
-                  <div>
-                    <p className="text-xs text-gray-500">Телефон</p>
-                    <p className="text-sm font-medium">{order.client?.phone || '—'}</p>
+                <div className="mt-4 grid grid-cols-3 gap-2 pt-4 border-t border-white/[0.04]">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-gray-500">Телефон</p>
+                    <p className="text-xs font-medium truncate">{order.client?.phone || '—'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">Цена</p>
-                    <p className="text-lg font-bold">{formatMoney(order.price)} ₽</p>
+                    <p className="text-[10px] text-gray-500">Цена</p>
+                    <p className="text-sm font-bold">{formatMoney(order.price)} ₽</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-500">Остаток</p>
+                    <p className="text-sm font-bold text-red-400">{formatMoney(Math.max(0, (order.price || 0) - (order.advance || 0)))} ₽</p>
                   </div>
                 </div>
               )}

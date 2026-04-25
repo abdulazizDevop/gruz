@@ -4,6 +4,7 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { useSales } from '../hooks/useSales';
 import { hasPermission } from '../lib/permissions';
+import { isProductionRole } from '../lib/roles';
 import * as XLSX from 'xlsx';
 import {
   TrendingUp,
@@ -42,8 +43,9 @@ const StatCard = ({ title, value, icon: Icon, trend, delay }) => (
 
 const Dashboard = () => {
   const { orders, inventory, wholesalers } = useOrders();
-  const { currentUser } = useAuth();
+  const { currentUser, users } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isAssembler = isProductionRole(currentUser?.role);
   const salesHistory = useSales(isSuperAdmin);
   const canSeeClient = hasPermission(currentUser, 'client_info');
 
@@ -88,7 +90,10 @@ const Dashboard = () => {
     XLSX.writeFile(wb, `DOORMAN_Бэкап_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const visibleOrders = isSuperAdmin ? orders : orders.filter(o => o.adminId === currentUser?.id);
+  const superadminIds = users.filter(u => u.role === 'superadmin').map(u => u.id);
+  const visibleOrders = (isSuperAdmin || isAssembler)
+    ? orders
+    : orders.filter(o => o.adminId === currentUser?.id || superadminIds.includes(o.adminId));
   const activeSalesTotal = visibleOrders.reduce((acc, o) => acc + (o.price || o.total || 0), 0);
   const historySalesTotal = isSuperAdmin ? salesHistory.reduce((acc, s) => acc + (s.total || s.price || 0), 0) : 0;
   const totalSales = activeSalesTotal + historySalesTotal;
