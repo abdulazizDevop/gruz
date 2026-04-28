@@ -32,14 +32,21 @@ const DEFAULT_WHOLESALERS = [
   { id: 'w2', name: 'Магомед', phone: '+79007654321', info: 'Оптовик 10%' },
 ];
 
-const seedIfEmpty = async (collName, defaults) => {
+const seedOnce = async (collName, defaults) => {
+  const flagRef = doc(db, 'meta', 'seedFlags');
+  const flagSnap = await getDoc(flagRef);
+  const flags = flagSnap.exists() ? flagSnap.data() : {};
+  if (flags[collName]) return;
+
   const snap = await getDocs(collection(db, collName));
-  if (!snap.empty) return;
-  const batch = writeBatch(db);
-  defaults.forEach(item => {
-    batch.set(doc(db, collName, item.id), item);
-  });
-  await batch.commit();
+  if (snap.empty) {
+    const batch = writeBatch(db);
+    defaults.forEach(item => {
+      batch.set(doc(db, collName, item.id), item);
+    });
+    await batch.commit();
+  }
+  await setDoc(flagRef, { ...flags, [collName]: true }, { merge: true });
 };
 
 const ensureMeta = async () => {
@@ -67,6 +74,7 @@ export const OrderProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
   const prevOrderStatusRef = useRef(new Map());
+  const knownOrderIdsRef = useRef(new Set());
   const firstOrderLoadRef = useRef(true);
   const currentUserRef = useRef(currentUser);
 
@@ -85,8 +93,8 @@ export const OrderProvider = ({ children }) => {
     (async () => {
       try {
         await Promise.all([
-          seedIfEmpty('inventory', DEFAULT_INVENTORY),
-          seedIfEmpty('wholesalers', DEFAULT_WHOLESALERS),
+          seedOnce('inventory', DEFAULT_INVENTORY),
+          seedOnce('wholesalers', DEFAULT_WHOLESALERS),
           ensureMeta(),
         ]);
       } catch (err) {
@@ -110,8 +118,14 @@ export const OrderProvider = ({ children }) => {
           if (prevStatus && prevStatus !== o.status && o.status === '✅ Сделано') {
             handleReadyTransition(o);
           }
+          if (!knownOrderIdsRef.current.has(o.id)) {
+            handleNewOrder(o);
+          }
         });
+      } else {
+        list.forEach(o => knownOrderIdsRef.current.add(o.id));
       }
+      list.forEach(o => knownOrderIdsRef.current.add(o.id));
       firstOrderLoadRef.current = false;
       prevOrderStatusRef.current = next;
 
@@ -138,13 +152,35 @@ export const OrderProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleNewOrder = (order) => {
+    const user = currentUserRef.current;
+    if (!user) return;
+    if (order.adminId === user.id) return;
+
+    const title = `Новый заказ #${order.code}`;
+    const who = order.adminName || 'Админ';
+    const message = `${who} создал новый заказ.`;
+
+    addNotification({
+      id: Date.now() + Math.random(),
+      title,
+      message,
+      type: 'info',
+    });
+
+    showBrowserNotification(title, {
+      body: message,
+      tag: `order-new-${order.id}`,
+      requireInteraction: false,
+    });
+  };
+
   const handleReadyTransition = (order) => {
     const user = currentUserRef.current;
     if (!user) return;
-    const isAdminRole = user.role === 'admin' || user.role === 'superadmin';
-    if (!isAdminRole) return;
-    const isOwnOrder = user.role === 'superadmin' || order.adminId === user.id;
-    if (!isOwnOrder) return;
+    const isCreator = order.adminId === user.id;
+    const isSuperAdmin = user.role === 'superadmin';
+    if (!isCreator && !isSuperAdmin) return;
 
     const title = `Заказ #${order.code} готов!`;
     const who = order.assemblerName ? order.assemblerName : 'Мастер';

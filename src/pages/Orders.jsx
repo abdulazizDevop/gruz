@@ -95,6 +95,7 @@ const Orders = () => {
   const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
   const canSeeClient = hasPermission(currentUser, 'client_info');
   const canSetUrgent = hasPermission(currentUser, 'set_urgent');
+  const canCreateOrder = hasPermission(currentUser, 'create_order');
 
   const superadminIds = users.filter(u => u.role === 'superadmin').map(u => u.id);
   const visibleOrders = (isSuperAdmin || isAssembler)
@@ -344,6 +345,66 @@ const Orders = () => {
 
   const remaining = (order) => Math.max(0, (order.price || 0) - (order.advance || 0));
 
+  const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+
+  const handlePrintOrder = (order) => {
+    if (!order) return;
+    const fmt = (v) => formatMoney(v) + ' ₽';
+    const created = order.createdAt ? new Date(order.createdAt).toLocaleString('ru-RU') : '—';
+    const specsRows = DOOR_FIELDS
+      .map(f => `<tr><td class="lbl">${escapeHtml(f.label)}</td><td>${escapeHtml(order[f.key] || '—')}</td></tr>`)
+      .join('');
+    const clientHtml = canSeeClient ? `
+      <h2>Клиент</h2>
+      <table class="kv">
+        <tr><td class="lbl">Имя</td><td>${escapeHtml(order.client?.name || '—')}</td></tr>
+        <tr><td class="lbl">Телефон</td><td>${escapeHtml(order.client?.phone || '—')}</td></tr>
+        <tr><td class="lbl">Адрес</td><td>${escapeHtml(order.client?.address || '—')}</td></tr>
+      </table>
+      <h2>Оплата</h2>
+      <table class="kv">
+        <tr><td class="lbl">Цена</td><td>${escapeHtml(fmt(order.price))}</td></tr>
+        <tr><td class="lbl">Аванс</td><td>${escapeHtml(fmt(order.advance))}</td></tr>
+        <tr><td class="lbl">Остаток</td><td><b>${escapeHtml(fmt(remaining(order)))}</b></td></tr>
+      </table>` : '';
+    const noteHtml = order.note ? `<h2>Примечание</h2><p class="note">${escapeHtml(order.note)}</p>` : '';
+
+    const html = `<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Заказ #${escapeHtml(order.code)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px;font-size:13px;line-height:1.4}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:14px;margin:18px 0 6px;border-bottom:1px solid #999;padding-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+  .meta{color:#444;font-size:12px;margin-bottom:6px}
+  table{width:100%;border-collapse:collapse}
+  table.kv td{padding:4px 8px;border-bottom:1px solid #ddd;vertical-align:top}
+  table.kv td.lbl{width:38%;color:#555;font-size:12px}
+  table.specs td{padding:5px 8px;border:1px solid #ccc;vertical-align:top}
+  table.specs td.lbl{background:#f3f3f3;color:#444;width:38%;font-size:12px}
+  .note{padding:8px 10px;border-left:3px solid #c89b00;background:#fff8e1;white-space:pre-wrap}
+  .footer{margin-top:30px;font-size:11px;color:#666;border-top:1px solid #999;padding-top:8px}
+  @media print{ body{margin:14mm} }
+</style></head><body>
+  <h1>Заказ #${escapeHtml(order.code)}</h1>
+  <div class="meta">Создал: ${escapeHtml(order.adminName || '—')} • ${escapeHtml(created)} • Статус: ${escapeHtml(order.status || '—')}</div>
+  <h2>Параметры двери</h2>
+  <table class="specs">${specsRows}</table>
+  ${noteHtml}
+  ${clientHtml}
+  <div class="footer">Распечатано: ${escapeHtml(new Date().toLocaleString('ru-RU'))}</div>
+  <script>window.onload=function(){setTimeout(function(){window.print();},150);};</script>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=1000');
+    if (!w) { alert('Разрешите всплывающие окна для печати'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-6 pb-20">
       {/* Header */}
@@ -352,7 +413,7 @@ const Orders = () => {
           <h1 className="text-2xl font-bold tracking-tight">Заказы</h1>
           <p className="text-gray-500 text-sm mt-1">Управление заказами дверей</p>
         </div>
-        {isAdmin && (
+        {canCreateOrder && (
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="px-4 py-2.5 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors flex items-center gap-2 text-sm"
@@ -532,7 +593,7 @@ const Orders = () => {
                       <Edit2 size={14} /> Редактировать
                     </button>
                   )}
-                  <button onClick={() => window.print()} className="p-2 hover:bg-white/5 rounded-lg text-gray-500">
+                  <button onClick={() => handlePrintOrder(activeSelected)} className="p-2 hover:bg-white/5 rounded-lg text-gray-500" title="Печать">
                     <Printer size={18} />
                   </button>
                   <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-white/5 rounded-lg text-gray-500">

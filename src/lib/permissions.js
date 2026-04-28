@@ -11,13 +11,14 @@ export const FEATURE_FLAGS = [
   { key: 'client_info', label: 'Видеть данные клиента (имя, адрес, цена)' },
   { key: 'set_urgent', label: 'Ставить статус «Срочное»' },
   { key: 'manage_wholesalers', label: 'Добавлять и изменять оптовиков' },
+  { key: 'create_order', label: 'Создавать заказы' },
 ];
 
 const ALL_KEYS = [...SECTIONS.map(s => s.key), ...FEATURE_FLAGS.map(f => f.key)];
 
 const SYSTEM_DEFAULTS = {
   superadmin: ALL_KEYS,
-  admin: ['dashboard', 'orders', 'wholesalers', 'reserved', 'archive', 'client_info', 'set_urgent', 'manage_wholesalers'],
+  admin: ['dashboard', 'orders', 'wholesalers', 'reserved', 'archive', 'client_info', 'set_urgent', 'manage_wholesalers', 'create_order'],
   warehouse: ['dashboard', 'warehouse', 'reserved'],
 };
 
