@@ -9,6 +9,7 @@ import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required 
 import { uploadImage } from '../lib/uploads';
 import { isProductionRole, getRoleLabel } from '../lib/roles';
 import { hasPermission } from '../lib/permissions';
+import { CANVAS_OPTIONS, OPENING_OPTIONS, DOOR_FIELDS } from '../lib/doorFields';
 
 const formatMoney = (v) => {
   const n = Number(v || 0);
@@ -38,33 +39,6 @@ const EMPTY_ORDER = {
   isUrgent: false,
   photos: [],
 };
-
-const CANVAS_OPTIONS = [
-  { value: 'Одностворчатый', label: 'Одностворчатый' },
-  { value: 'Двустворчатый', label: 'Двустворчатый' },
-];
-
-const OPENING_OPTIONS = [
-  { value: 'Левое', label: 'Левое' },
-  { value: 'Правое', label: 'Правое' },
-];
-
-const DOOR_FIELDS = [
-  { key: 'model', label: 'Модель' },
-  { key: 'size', label: 'Размер' },
-  { key: 'canvas', label: 'Полотно' },
-  { key: 'opening', label: 'Открывание' },
-  { key: 'color', label: 'Цвет' },
-  { key: 'casing', label: 'Наличник' },
-  { key: 'glass', label: 'Стекло' },
-  { key: 'grille', label: 'Решетка' },
-  { key: 'hardware', label: 'Фурнитура' },
-  { key: 'threshold', label: 'Порог нержавейка' },
-  { key: 'crown', label: 'Корона' },
-  { key: 'panelOuter', label: 'Панель наружная' },
-  { key: 'panelInner', label: 'Панель внутренняя' },
-  { key: 'transom', label: 'Фрамуга' },
-];
 
 const Orders = () => {
   const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, nextOrderNumber } = useOrders();
@@ -375,7 +349,7 @@ const Orders = () => {
 <html lang="ru"><head><meta charset="utf-8"><title>Заказ #${escapeHtml(order.code)}</title>
 <style>
   *{box-sizing:border-box}
-  body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px;font-size:13px;line-height:1.4}
+  body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px;font-size:13px;line-height:1.4;padding-top:56px}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:14px;margin:18px 0 6px;border-bottom:1px solid #999;padding-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
   .meta{color:#444;font-size:12px;margin-bottom:6px}
@@ -386,8 +360,15 @@ const Orders = () => {
   table.specs td.lbl{background:#f3f3f3;color:#444;width:38%;font-size:12px}
   .note{padding:8px 10px;border-left:3px solid #c89b00;background:#fff8e1;white-space:pre-wrap}
   .footer{margin-top:30px;font-size:11px;color:#666;border-top:1px solid #999;padding-top:8px}
-  @media print{ body{margin:14mm} }
+  .toolbar{position:fixed;top:0;left:0;right:0;background:#111114;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9999}
+  .toolbar button{background:#e8de8c;color:#111;border:0;padding:8px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer}
+  .toolbar button.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.2)}
+  @media print{ body{margin:14mm;padding-top:0} .toolbar{display:none !important} }
 </style></head><body>
+  <div class="toolbar no-print">
+    <button class="ghost" onclick="window.close();if(!window.closed){history.length>1?history.back():null}">← Назад</button>
+    <button onclick="window.print()">Печать</button>
+  </div>
   <h1>Заказ #${escapeHtml(order.code)}</h1>
   <div class="meta">Создал: ${escapeHtml(order.adminName || '—')} • ${escapeHtml(created)} • Статус: ${escapeHtml(order.status || '—')}</div>
   <h2>Параметры двери</h2>
@@ -395,7 +376,7 @@ const Orders = () => {
   ${noteHtml}
   ${clientHtml}
   <div class="footer">Распечатано: ${escapeHtml(new Date().toLocaleString('ru-RU'))}</div>
-  <script>window.onload=function(){setTimeout(function(){window.print();},150);};</script>
+  <script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
 </body></html>`;
 
     const w = window.open('', '_blank', 'width=900,height=1000');

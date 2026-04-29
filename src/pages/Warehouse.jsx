@@ -8,13 +8,25 @@ import * as XLSX from 'xlsx';
 import { required, positiveInteger, nonNegativeNumber, formatMoneyInput, parseMoneyInput } from '../lib/validation';
 import { uploadImage } from '../lib/uploads';
 import ImageLightbox from '../components/ImageLightbox';
+import {
+  DOOR_FIELDS,
+  CANVAS_OPTIONS,
+  OPENING_OPTIONS,
+  EMPTY_DOOR_SPECS,
+  deriveCategoryFromCanvas,
+} from '../lib/doorFields';
 
 const CATEGORIES = [
   { key: 'single', label: 'Одностворчатые', icon: DoorClosed },
   { key: 'double', label: 'Двустворчатые', icon: DoorOpen },
 ];
 
-const getItemCategory = (item) => item?.category || 'single';
+const getItemCategory = (item) => {
+  if (!item) return 'single';
+  if (item.canvas === 'Двустворчатый') return 'double';
+  if (item.canvas === 'Одностворчатый') return 'single';
+  return item.category || 'single';
+};
 
 const WarehousePage = () => {
   const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem } = useOrders();
@@ -22,10 +34,15 @@ const WarehousePage = () => {
   const [activeCategory, setActiveCategory] = useState('single');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', qty: '', price: '', category: 'single', imageUrl: '' });
+  const [formData, setFormData] = useState({
+    name: '', qty: '', price: '', category: 'single', imageUrl: '',
+    note: '',
+    ...EMPTY_DOOR_SPECS,
+  });
   const [errors, setErrors] = useState({});
   const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState(null);
+  const [previewItem, setPreviewItem] = useState(null);
   const fileInputRef = useRef(null);
 
   const categoryInventory = inventory.filter(i => getItemCategory(i) === activeCategory);
@@ -100,18 +117,24 @@ const WarehousePage = () => {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
+    const specs = DOOR_FIELDS.reduce((acc, f) => {
+      acc[f.key] = (formData[f.key] || '').toString().trim();
+      return acc;
+    }, {});
     const payload = {
       name: formData.name.trim(),
       qty: parseMoneyInput(formData.qty),
       price: parseMoneyInput(formData.price),
-      category: formData.category || 'single',
+      category: deriveCategoryFromCanvas(specs.canvas, formData.category || 'single'),
       imageUrl: formData.imageUrl || '',
+      note: (formData.note || '').trim(),
+      ...specs,
     };
     if (editingItem) updateInventoryItem(editingItem.id, payload);
     else addInventoryItem(payload);
     setIsModalOpen(false);
     setEditingItem(null);
-    setFormData({ name: '', qty: '', price: '', category: activeCategory, imageUrl: '' });
+    setFormData({ name: '', qty: '', price: '', category: activeCategory, imageUrl: '', note: '', ...EMPTY_DOOR_SPECS });
     setErrors({});
   };
 
@@ -123,21 +146,34 @@ const WarehousePage = () => {
 
   const openAdd = () => {
     setEditingItem(null);
-    setFormData({ name: '', qty: '', price: '', category: activeCategory, imageUrl: '' });
+    const presetCanvas = activeCategory === 'double' ? 'Двустворчатый' : 'Одностворчатый';
+    setFormData({
+      name: '', qty: '', price: '', category: activeCategory, imageUrl: '',
+      note: '',
+      ...EMPTY_DOOR_SPECS,
+      canvas: presetCanvas,
+    });
     setErrors({});
     setIsModalOpen(true);
   };
 
   const openEdit = (item) => {
     setEditingItem(item);
+    const specs = DOOR_FIELDS.reduce((acc, f) => {
+      acc[f.key] = item[f.key] || '';
+      return acc;
+    }, {});
     setFormData({
-      name: item.name,
+      name: item.name || '',
       qty: formatMoneyInput(item.qty),
       price: formatMoneyInput(item.price),
       category: getItemCategory(item),
       imageUrl: item.imageUrl || '',
+      note: item.note || '',
+      ...specs,
     });
     setErrors({});
+    setPreviewItem(null);
     setIsModalOpen(true);
   };
 
@@ -247,13 +283,17 @@ const WarehousePage = () => {
             </thead>
             <tbody>
               {filteredInventory.map((item) => (
-                <tr key={item.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
+                <tr
+                  key={item.id}
+                  onClick={() => setPreviewItem(item)}
+                  className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group cursor-pointer"
+                >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       {item.imageUrl ? (
                         <button
                           type="button"
-                          onClick={() => setViewImage(item.imageUrl)}
+                          onClick={(e) => { e.stopPropagation(); setViewImage(item.imageUrl); }}
                           className="w-11 h-11 rounded-lg overflow-hidden border border-white/10 hover:border-[#e8de8c]/40 transition-colors shrink-0"
                         >
                           <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -275,12 +315,12 @@ const WarehousePage = () => {
                   <td className="px-5 py-4 text-sm text-gray-300 font-medium">{(item.price || 0).toLocaleString('ru-RU')} ₽</td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(item)}
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(item); }}
                         className="p-2 hover:bg-white/[0.06] rounded-lg text-gray-500 hover:text-blue-400 transition-colors">
                         <Edit2 size={16} />
                       </button>
                       <button
-                        onClick={() => { if (window.confirm(`Удалить дверь "${item.name}"?`)) deleteInventoryItem(item.id); }}
+                        onClick={(e) => { e.stopPropagation(); if (window.confirm(`Удалить дверь "${item.name}"?`)) deleteInventoryItem(item.id); }}
                         className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
                       >
                         <Trash2 size={16} />
@@ -312,13 +352,13 @@ const WarehousePage = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10">
-              <form onSubmit={handleSubmit}>
-                <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+              className="w-full max-w-md bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10 flex flex-col max-h-[90vh]">
+              <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
                   <h2 className="text-lg font-bold">{editingItem ? 'Редактировать' : 'Новая дверь'}</h2>
                   <button type="button" onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-white/5 rounded-lg"><X size={20} /></button>
                 </div>
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4 overflow-y-auto flex-1">
                   <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Фото двери</label>
                     <input
@@ -364,29 +404,6 @@ const WarehousePage = () => {
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 font-medium mb-1 block">Полотно <span className="text-red-400">*</span></label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CATEGORIES.map(cat => {
-                        const Icon = cat.icon;
-                        const active = formData.category === cat.key;
-                        return (
-                          <button
-                            key={cat.key}
-                            type="button"
-                            onClick={() => updateForm('category', cat.key)}
-                            className={`px-3 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border transition-colors ${
-                              active
-                                ? 'bg-[#e8de8c]/10 text-[#e8de8c] border-[#e8de8c]/30'
-                                : 'bg-white/[0.04] text-gray-400 border-white/[0.06] hover:bg-white/[0.06]'
-                            }`}
-                          >
-                            <Icon size={14} /> {cat.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Наименование <span className="text-red-400">*</span></label>
                     <input type="text" value={formData.name} onChange={(e) => updateForm('name', e.target.value)}
                       className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm ${
@@ -412,8 +429,58 @@ const WarehousePage = () => {
                       {errors.price && <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} /> {errors.price}</p>}
                     </div>
                   </div>
+
+                  <div>
+                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <DoorOpen size={12} /> Параметры двери
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Модель</label>
+                        <input type="text" value={formData.model} onChange={(e) => updateForm('model', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                          placeholder="Название модели" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Размер</label>
+                        <input type="text" value={formData.size} onChange={(e) => updateForm('size', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                          placeholder="Напр. 2050x860" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Полотно</label>
+                        <select value={formData.canvas} onChange={(e) => updateForm('canvas', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm appearance-none">
+                          <option value="">Не выбрано</option>
+                          {CANVAS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Открывание</label>
+                        <select value={formData.opening} onChange={(e) => updateForm('opening', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm appearance-none">
+                          <option value="">Не выбрано</option>
+                          {OPENING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </div>
+                      {DOOR_FIELDS.filter(f => !['model', 'size', 'canvas', 'opening'].includes(f.key)).map(f => (
+                        <div key={f.key}>
+                          <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">{f.label}</label>
+                          <input type="text" value={formData[f.key] || ''} onChange={(e) => updateForm(f.key, e.target.value)}
+                            className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Примечание</label>
+                    <textarea value={formData.note || ''} onChange={(e) => updateForm('note', e.target.value)}
+                      className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm h-20 resize-none"
+                      placeholder="Дополнительные детали..." />
+                  </div>
                 </div>
-                <div className="p-5 border-t border-white/[0.06] flex gap-3">
+                <div className="p-5 border-t border-white/[0.06] flex gap-3 shrink-0">
                   <button type="button" onClick={() => setIsModalOpen(false)}
                     className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-medium py-3 rounded-xl transition-colors text-sm">Отмена</button>
                   <button type="submit"
@@ -422,6 +489,73 @@ const WarehousePage = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Preview modal */}
+      <AnimatePresence>
+        {previewItem && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setPreviewItem(null)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10 flex flex-col max-h-[90vh]">
+              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {previewItem.imageUrl ? (
+                    <button type="button" onClick={() => setViewImage(previewItem.imageUrl)}
+                      className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-[#e8de8c]/40 transition-colors shrink-0">
+                      <img src={previewItem.imageUrl} alt={previewItem.name} className="w-full h-full object-cover" />
+                    </button>
+                  ) : (
+                    <div className="w-12 h-12 bg-white/[0.04] rounded-lg flex items-center justify-center text-gray-500 shrink-0">
+                      <Package size={18} />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="text-base font-bold truncate">{previewItem.name || '—'}</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {(previewItem.qty || 0)} шт. • {(previewItem.price || 0).toLocaleString('ru-RU')} ₽
+                    </p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setPreviewItem(null)} className="p-1.5 hover:bg-white/5 rounded-lg shrink-0">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-5 overflow-y-auto flex-1 space-y-4">
+                <div>
+                  <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <DoorOpen size={12} /> Параметры двери
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {DOOR_FIELDS.map(f => (
+                      <div key={f.key} className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.04]">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{f.label}</p>
+                        <p className="text-sm font-medium mt-0.5 break-words">{previewItem[f.key] || '—'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {previewItem.note && (
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl">
+                    <p className="text-xs text-amber-400 font-medium mb-1">Примечание</p>
+                    <p className="text-sm whitespace-pre-wrap">{previewItem.note}</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-5 border-t border-white/[0.06] flex gap-3 shrink-0">
+                <button type="button" onClick={() => setPreviewItem(null)}
+                  className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-medium py-3 rounded-xl transition-colors text-sm">
+                  Закрыть
+                </button>
+                <button type="button" onClick={() => openEdit(previewItem)}
+                  className="flex-[2] bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
+                  <Edit2 size={14} /> Редактировать
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
