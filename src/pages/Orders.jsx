@@ -41,7 +41,7 @@ const EMPTY_ORDER = {
 };
 
 const Orders = () => {
-  const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, nextOrderNumber } = useOrders();
+  const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, deleteOrder, nextOrderNumber } = useOrders();
   const { currentUser, users, roles } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +54,8 @@ const Orders = () => {
   const [viewImage, setViewImage] = useState(null);
   const chatFileRef = useRef(null);
   const orderPhotoRef = useRef(null);
+  const submittingRef = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [readyModalOpen, setReadyModalOpen] = useState(false);
   const [readyPhotoUrl, setReadyPhotoUrl] = useState('');
@@ -112,6 +114,7 @@ const Orders = () => {
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     const err = validateOrder(newOrder);
     setErrors(err);
     if (Object.keys(err).length > 0) return;
@@ -131,12 +134,21 @@ const Orders = () => {
       items: [],
     };
 
-    if (editingOrderId) {
-      await updateOrder(editingOrderId, payload);
-    } else {
-      await createOrder(payload);
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      if (editingOrderId) {
+        await updateOrder(editingOrderId, payload);
+      } else {
+        await createOrder(payload);
+      }
+      closeOrderForm();
+    } catch (err) {
+      console.error('Save order failed', err);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-    closeOrderForm();
   };
 
   const closeOrderForm = () => {
@@ -572,6 +584,24 @@ const Orders = () => {
                       className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-xs font-semibold text-blue-400 transition-colors"
                     >
                       <Edit2 size={14} /> Редактировать
+                    </button>
+                  )}
+                  {(isSuperAdmin || (isAdmin && activeSelected.adminId === currentUser?.id)) && (
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`Удалить заказ #${activeSelected.code}? Это действие нельзя отменить.`)) return;
+                        try {
+                          await deleteOrder(activeSelected.id);
+                          setSelectedOrder(null);
+                        } catch (err) {
+                          console.error('Delete order failed', err);
+                          window.alert('Не удалось удалить заказ');
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-xs font-semibold text-red-400 transition-colors"
+                      title="Удалить заказ"
+                    >
+                      <Trash2 size={14} /> Удалить
                     </button>
                   )}
                   <button onClick={() => handlePrintOrder(activeSelected)} className="p-2 hover:bg-white/5 rounded-lg text-gray-500" title="Печать">
@@ -1103,9 +1133,11 @@ const Orders = () => {
                   </div>
                   <button
                     type="submit"
-                    className="px-8 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors text-sm"
+                    disabled={submitting}
+                    className="px-8 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] disabled:opacity-60 disabled:cursor-not-allowed text-black font-semibold rounded-xl transition-colors text-sm flex items-center gap-2"
                   >
-                    {editingOrderId ? 'Сохранить' : 'Создать заказ'}
+                    {submitting && <Loader2 size={14} className="animate-spin" />}
+                    {submitting ? 'Сохранение...' : (editingOrderId ? 'Сохранить' : 'Создать заказ')}
                   </button>
                 </div>
               </form>

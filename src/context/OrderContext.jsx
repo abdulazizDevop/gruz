@@ -76,6 +76,7 @@ export const OrderProvider = ({ children }) => {
   const prevOrderStatusRef = useRef(new Map());
   const knownOrderIdsRef = useRef(new Set());
   const firstOrderLoadRef = useRef(true);
+  const sessionStartRef = useRef(new Date().toISOString());
   const currentUserRef = useRef(currentUser);
 
   useEffect(() => {
@@ -156,6 +157,7 @@ export const OrderProvider = ({ children }) => {
     const user = currentUserRef.current;
     if (!user) return;
     if (order.adminId === user.id) return;
+    if ((order.createdAt || '') < sessionStartRef.current) return;
 
     const title = `Новый заказ #${order.code}`;
     const who = order.adminName || 'Админ';
@@ -325,6 +327,10 @@ export const OrderProvider = ({ children }) => {
     await deleteDoc(doc(db, 'orders', orderId));
   };
 
+  const deleteOrder = async (orderId) => {
+    await deleteDoc(doc(db, 'orders', orderId));
+  };
+
   const addInventoryItem = async (item) => {
     const id = Date.now().toString();
     await setDoc(doc(db, 'inventory', id), { ...item, id });
@@ -375,6 +381,7 @@ export const OrderProvider = ({ children }) => {
         updateOrderStatus,
         addResponse,
         markShipped,
+        deleteOrder,
         addInventoryItem,
         updateInventoryItem,
         deleteInventoryItem,
