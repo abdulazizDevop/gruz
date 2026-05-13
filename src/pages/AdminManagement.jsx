@@ -39,7 +39,7 @@ const AdminManagement = () => {
       await setNextOrderNumberValue(n);
       setCounterSuccess(true);
       setTimeout(() => setCounterSuccess(false), 2500);
-    } catch (err) {
+    } catch {
       setCounterError('Не удалось сохранить');
     } finally {
       setCounterSaving(false);
@@ -217,7 +217,7 @@ const AdminManagement = () => {
     if (!window.confirm(`Удалить должность "${role.label}"?`)) return;
     try {
       await deleteRole(role.id);
-    } catch (err) {
+    } catch {
       window.alert('Не удалось удалить должность');
     }
   };

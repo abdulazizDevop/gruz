@@ -10,7 +10,6 @@ import {
   getDocs,
   writeBatch,
   runTransaction,
-  serverTimestamp,
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -254,6 +253,15 @@ export const OrderProvider = ({ children }) => {
     await updateDoc(doc(db, 'orders', orderId), patch);
   };
 
+  const revertReadyStatus = async (orderId) => {
+    await updateDoc(doc(db, 'orders', orderId), {
+      status: '💭 В процессе',
+      assemblerId: null,
+      assemblerName: null,
+      readyAt: null,
+    });
+  };
+
   const updateOrder = async (orderId, patch) => {
     const immutable = ['id', 'code', 'createdAt', 'adminId', 'adminName', 'status', 'responseRoom', 'assemblerId', 'assemblerName', 'readyAt'];
     const safe = { ...patch };
@@ -291,6 +299,8 @@ export const OrderProvider = ({ children }) => {
         // Door specs
         model: orderToShip.model || '',
         size: orderToShip.size || '',
+        sizeFrame: orderToShip.sizeFrame || '',
+        sizeOpening: orderToShip.sizeOpening || '',
         canvas: orderToShip.canvas || '',
         color: orderToShip.color || '',
         casing: orderToShip.casing || '',
@@ -379,6 +389,7 @@ export const OrderProvider = ({ children }) => {
         createOrder,
         updateOrder,
         updateOrderStatus,
+        revertReadyStatus,
         addResponse,
         markShipped,
         deleteOrder,

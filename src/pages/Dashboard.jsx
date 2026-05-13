@@ -162,18 +162,22 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {visibleOrders.slice(0, 6).map((order) => (
-                  <tr key={order.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                {visibleOrders.slice(0, 6).map((order) => {
+                  const isUrgentOrder = order.isUrgent || order.status?.includes('🚨');
+                  return (
+                  <tr key={order.id} className={`border-b border-white/[0.03] transition-colors ${
+                    isUrgentOrder ? 'bg-red-500/[0.06] hover:bg-red-500/[0.1]' : 'hover:bg-white/[0.02]'
+                  }`}>
                     <td className="px-5 py-4 text-sm font-semibold text-[#e8de8c]">#{order.code}</td>
                     <td className="px-5 py-4">
                       <p className="text-sm font-medium">{canSeeClient ? (order.client?.name || 'Без имени') : '•••'}</p>
                       <p className="text-xs text-gray-500">{order.wholesaler ? 'Оптовик' : 'Розница'}</p>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        order.status?.includes('✅') ? 'bg-emerald-500/10 text-emerald-400' :
-                        order.status?.includes('🚨') ? 'bg-red-500/10 text-red-400' :
-                        'bg-blue-500/10 text-blue-400'
+                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        order.status?.includes('✅') ? 'bg-emerald-500/15 text-emerald-300' :
+                        order.status?.includes('🚨') ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' :
+                        'bg-blue-500/15 text-blue-300'
                       }`}>{order.status}</span>
                     </td>
                     <td className="px-5 py-4 text-sm font-semibold">
@@ -181,7 +185,8 @@ const Dashboard = () => {
                     </td>
                     <td className="px-5 py-4 text-xs text-gray-500 text-right">{new Date(order.createdAt).toLocaleDateString('ru-RU')}</td>
                   </tr>
-                ))}
+                  );
+                })}
                 {visibleOrders.length === 0 && (
                   <tr>
                     <td colSpan="5" className="px-5 py-16 text-center text-gray-600">

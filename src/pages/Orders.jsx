@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle, Edit2, Loader2
+  Plus, Search, CheckCircle2, MessageSquare, Printer, X, Trash2, Send, Truck, Image as ImageIcon, Clock, DoorOpen, User, Phone, MapPin, Calendar, AlertCircle, Edit2, Loader2, RotateCcw
 } from 'lucide-react';
 import { formatPhone, isValidPhone, formatMoneyInput, parseMoneyInput, required } from '../lib/validation';
 import { uploadImage } from '../lib/uploads';
@@ -19,6 +19,8 @@ const formatMoney = (v) => {
 const EMPTY_ORDER = {
   model: '',
   size: '',
+  sizeFrame: '',
+  sizeOpening: '',
   canvas: '',
   opening: '',
   color: '',
@@ -41,7 +43,7 @@ const EMPTY_ORDER = {
 };
 
 const Orders = () => {
-  const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, addResponse, markShipped, deleteOrder, nextOrderNumber } = useOrders();
+  const { orders, wholesalers, createOrder, updateOrder, updateOrderStatus, revertReadyStatus, addResponse, markShipped, deleteOrder, nextOrderNumber } = useOrders();
   const { currentUser, users, roles } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -163,6 +165,8 @@ const Orders = () => {
     setNewOrder({
       model: order.model || '',
       size: order.size || '',
+      sizeFrame: order.sizeFrame || '',
+      sizeOpening: order.sizeOpening || '',
       canvas: order.canvas || '',
       opening: order.opening || '',
       color: order.color || '',
@@ -433,7 +437,9 @@ const Orders = () => {
       {/* Orders grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <AnimatePresence mode="popLayout">
-          {filteredOrders.map((order, idx) => (
+          {filteredOrders.map((order, idx) => {
+            const isUrgentOrder = order.isUrgent || order.status?.includes('🚨');
+            return (
             <motion.div
               layout
               key={order.id}
@@ -442,7 +448,11 @@ const Orders = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: idx * 0.03 }}
               onClick={() => setSelectedOrder(order)}
-              className="bg-[#111114] border border-white/[0.06] rounded-2xl p-5 hover:border-[#e8de8c]/20 transition-all cursor-pointer group"
+              className={`rounded-2xl p-5 cursor-pointer group transition-all shadow-lg shadow-black/30 ${
+                isUrgentOrder
+                  ? 'bg-gradient-to-br from-red-500/[0.08] to-red-500/[0.02] border-2 border-red-500/40 hover:border-red-500/60 ring-1 ring-red-500/20'
+                  : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25'
+              }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -461,24 +471,24 @@ const Orders = () => {
                     </div>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                  order.status?.includes('✅') ? 'bg-emerald-500/10 text-emerald-400' :
-                  order.status?.includes('🚨') ? 'bg-red-500/10 text-red-400' :
-                  'bg-blue-500/10 text-blue-400'
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                  order.status?.includes('✅') ? 'bg-emerald-500/15 text-emerald-300' :
+                  order.status?.includes('🚨') ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' :
+                  'bg-blue-500/15 text-blue-300'
                 }`}>{order.status}</span>
               </div>
 
               {/* Door quick specs */}
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-red-500/[0.06]' : 'bg-white/[0.04]'}`}>
                   <p className="text-[10px] text-gray-500">Модель</p>
                   <p className="text-sm font-medium truncate">{order.model || '—'}</p>
                 </div>
-                <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                  <p className="text-[10px] text-gray-500">Размер</p>
+                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-red-500/[0.06]' : 'bg-white/[0.04]'}`}>
+                  <p className="text-[10px] text-gray-500">Полотно</p>
                   <p className="text-sm font-medium truncate">{order.size || '—'}</p>
                 </div>
-                <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-red-500/[0.06]' : 'bg-white/[0.04]'}`}>
                   <p className="text-[10px] text-gray-500">Цвет</p>
                   <p className="text-sm font-medium truncate">{order.color || '—'}</p>
                 </div>
@@ -521,7 +531,8 @@ const Orders = () => {
                 </div>
               )}
             </motion.div>
-          ))}
+            );
+          })}
         </AnimatePresence>
 
         {filteredOrders.length === 0 && (
@@ -830,6 +841,22 @@ const Orders = () => {
                       <CheckCircle2 size={18} /> Отметить готовым
                     </button>
                   )}
+                  {activeSelected.status?.includes('✅') && (isAssembler || isAdmin) && (
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('Отменить отметку «Готово»? Заказ вернётся в «В процессе».')) return;
+                        try {
+                          await revertReadyStatus(activeSelected.id);
+                        } catch (err) {
+                          console.error('Revert ready failed', err);
+                          window.alert('Не удалось отменить статус');
+                        }
+                      }}
+                      className="mt-3 w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <RotateCcw size={16} /> Отменить «Готово»
+                    </button>
+                  )}
                   {isAdmin && activeSelected.status?.includes('✅') && (
                     <button
                       onClick={() => { markShipped(activeSelected.id); setSelectedOrder(null); }}
@@ -906,7 +933,7 @@ const Orders = () => {
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
-                          Размер <span className="text-red-400">*</span>
+                          Размер полотна <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="text"
@@ -918,6 +945,26 @@ const Orders = () => {
                           placeholder="Напр. 2050x860"
                         />
                         <FieldError msg={errors.size} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Размер коробки</label>
+                        <input
+                          type="text"
+                          value={newOrder.sizeFrame}
+                          onChange={(e) => updateField('sizeFrame', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                          placeholder="Напр. 2070x880"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Размер проёма</label>
+                        <input
+                          type="text"
+                          value={newOrder.sizeOpening}
+                          onChange={(e) => updateField('sizeOpening', e.target.value)}
+                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
+                          placeholder="Напр. 2100x920"
+                        />
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">Полотно</label>
@@ -955,7 +1002,7 @@ const Orders = () => {
                           placeholder="Напр. Венге"
                         />
                       </div>
-                      {DOOR_FIELDS.filter(f => !['model', 'size', 'canvas', 'opening', 'color'].includes(f.key)).map(f => (
+                      {DOOR_FIELDS.filter(f => !['model', 'size', 'sizeFrame', 'sizeOpening', 'canvas', 'opening', 'color'].includes(f.key)).map(f => (
                         <div key={f.key}>
                           <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">{f.label}</label>
                           <input

@@ -61,7 +61,9 @@ const ReservedWarehouse = () => {
 
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
-          {reservedOrders.map((order, idx) => (
+          {reservedOrders.map((order, idx) => {
+            const isUrgentOrder = order.isUrgent || order.status?.includes('🚨');
+            return (
             <motion.div
               layout
               key={order.id}
@@ -69,7 +71,11 @@ const ReservedWarehouse = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: Math.min(idx * 0.05, 0.3) }}
-              className="bg-[#111114] border border-white/[0.06] rounded-2xl p-6 hover:border-[#e8de8c]/20 transition-all group"
+              className={`rounded-2xl p-6 transition-all group shadow-lg shadow-black/30 ${
+                isUrgentOrder
+                  ? 'bg-gradient-to-br from-red-500/[0.08] to-red-500/[0.02] border-2 border-red-500/40 hover:border-red-500/60 ring-1 ring-red-500/20'
+                  : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25'
+              }`}
             >
               <div className="flex flex-col lg:flex-row items-center gap-6">
                 <div className="flex items-center gap-5 w-full lg:w-auto">
@@ -95,18 +101,22 @@ const ReservedWarehouse = () => {
 
                 <div className="h-px lg:h-10 w-full lg:w-px bg-white/[0.06]" />
 
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
                   <div>
                     <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1"><DoorOpen size={10} /> Модель</p>
                     <p className="text-sm font-medium truncate">{order.model || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 mb-1">Размер</p>
+                    <p className="text-[10px] text-gray-500 mb-1">Полотно</p>
                     <p className="text-sm font-medium truncate">{order.size || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 mb-1">Цвет</p>
-                    <p className="text-sm font-medium truncate">{order.color || '—'}</p>
+                    <p className="text-[10px] text-gray-500 mb-1">Коробка</p>
+                    <p className="text-sm font-medium truncate">{order.sizeFrame || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 mb-1">Проём</p>
+                    <p className="text-sm font-medium truncate">{order.sizeOpening || '—'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 mb-1">Цена</p>
@@ -124,7 +134,8 @@ const ReservedWarehouse = () => {
                 </button>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
 
           {reservedOrders.length === 0 && (
             <motion.div

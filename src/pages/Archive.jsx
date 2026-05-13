@@ -1,71 +1,86 @@
-import React, { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useOrders } from '../context/OrderContext';
-import { useAuth } from '../context/AuthContext';
-import { useSales } from '../hooks/useSales';
-import { hasPermission } from '../lib/permissions';
+import React, { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useOrders } from "../context/OrderContext";
+import { useAuth } from "../context/AuthContext";
+import { useSales } from "../hooks/useSales";
+import { hasPermission } from "../lib/permissions";
 import {
-  Search, Archive as ArchiveIcon, FileDown, Calendar, Phone, MapPin, User,
-  DoorOpen, Truck, X, Package, TrendingUp, DollarSign, Users as UsersIcon
-} from 'lucide-react';
-import * as XLSX from 'xlsx';
-import ImageLightbox from '../components/ImageLightbox';
+  Search,
+  Archive as ArchiveIcon,
+  FileDown,
+  Calendar,
+  Phone,
+  MapPin,
+  User,
+  DoorOpen,
+  Truck,
+  X,
+  Package,
+  TrendingUp,
+  DollarSign,
+  Users as UsersIcon,
+} from "lucide-react";
+import * as XLSX from "xlsx";
+import ImageLightbox from "../components/ImageLightbox";
 
-const formatMoney = (v) => Number(v || 0).toLocaleString('ru-RU');
+const formatMoney = (v) => Number(v || 0).toLocaleString("ru-RU");
 
 const DOOR_FIELDS = [
-  { key: 'model', label: 'Модель' },
-  { key: 'size', label: 'Размер' },
-  { key: 'canvas', label: 'Полотно' },
-  { key: 'color', label: 'Цвет' },
-  { key: 'casing', label: 'Наличник' },
-  { key: 'glass', label: 'Стекло' },
-  { key: 'grille', label: 'Решетка' },
-  { key: 'hardware', label: 'Фурнитура' },
-  { key: 'threshold', label: 'Порог нержавейка' },
-  { key: 'crown', label: 'Корона' },
-  { key: 'panelOuter', label: 'Панель наружная' },
-  { key: 'panelInner', label: 'Панель внутренняя' },
-  { key: 'transom', label: 'Фрамуга' },
+  { key: "model", label: "Модель" },
+  { key: "size", label: "Размер полотна" },
+  { key: "sizeFrame", label: "Размер коробки" },
+  { key: "sizeOpening", label: "Размер проёма" },
+  { key: "canvas", label: "Полотно" },
+  { key: "color", label: "Цвет" },
+  { key: "casing", label: "Наличник" },
+  { key: "glass", label: "Стекло" },
+  { key: "grille", label: "Решетка" },
+  { key: "hardware", label: "Фурнитура" },
+  { key: "threshold", label: "Порог нержавейка" },
+  { key: "crown", label: "Корона" },
+  { key: "panelOuter", label: "Панель наружная" },
+  { key: "panelInner", label: "Панель внутренняя" },
+  { key: "transom", label: "Фрамуга" },
 ];
 
-const getClientName = (s) => s.client?.name || s.clientName || 'Без имени';
-const getClientPhone = (s) => s.client?.phone || s.clientPhone || '';
-const getClientAddress = (s) => s.client?.address || s.clientAddress || '';
+const getClientName = (s) => s.client?.name || s.clientName || "Без имени";
+const getClientPhone = (s) => s.client?.phone || s.clientPhone || "";
+const getClientAddress = (s) => s.client?.address || s.clientAddress || "";
 const getPrice = (s) => s.price || s.total || 0;
 
 const Archive = () => {
   const { currentUser } = useAuth();
   const salesHistory = useSales();
-  const canSeeClient = hasPermission(currentUser, 'client_info');
-  const [searchTerm, setSearchTerm] = useState('');
+  const canSeeClient = hasPermission(currentUser, "client_info");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selected, setSelected] = useState(null);
   const [viewImage, setViewImage] = useState(null);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === "superadmin";
 
   const visible = useMemo(() => {
     let list = salesHistory;
     if (!isSuperAdmin) {
-      list = list.filter(s => !s.adminId || s.adminId === currentUser?.id);
+      list = list.filter((s) => !s.adminId || s.adminId === currentUser?.id);
     }
     if (fromDate) {
       const from = new Date(fromDate).getTime();
-      list = list.filter(s => new Date(s.shippedAt || 0).getTime() >= from);
+      list = list.filter((s) => new Date(s.shippedAt || 0).getTime() >= from);
     }
     if (toDate) {
       const to = new Date(toDate).getTime() + 24 * 60 * 60 * 1000;
-      list = list.filter(s => new Date(s.shippedAt || 0).getTime() < to);
+      list = list.filter((s) => new Date(s.shippedAt || 0).getTime() < to);
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      list = list.filter(s =>
-        String(s.code || '').includes(searchTerm) ||
-        getClientName(s).toLowerCase().includes(q) ||
-        getClientPhone(s).toLowerCase().includes(q) ||
-        (s.model || '').toLowerCase().includes(q)
+      list = list.filter(
+        (s) =>
+          String(s.code || "").includes(searchTerm) ||
+          getClientName(s).toLowerCase().includes(q) ||
+          getClientPhone(s).toLowerCase().includes(q) ||
+          (s.model || "").toLowerCase().includes(q),
       );
     }
     return list;
@@ -73,47 +88,86 @@ const Archive = () => {
 
   const stats = useMemo(() => {
     const list = [
-      { label: 'Продано дверей', value: visible.length, icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+      {
+        label: "Продано дверей",
+        value: visible.length,
+        icon: Package,
+        color: "text-blue-400",
+        bg: "bg-blue-500/10",
+      },
     ];
     if (canSeeClient) {
       const totalRevenue = visible.reduce((acc, s) => acc + getPrice(s), 0);
       const uniqueClients = new Set(
-        visible.map(s => `${getClientName(s)}|${getClientPhone(s)}`).filter(k => k !== 'Без имени|')
+        visible
+          .map((s) => `${getClientName(s)}|${getClientPhone(s)}`)
+          .filter((k) => k !== "Без имени|"),
       ).size;
-      list.push({ label: 'Сумма продаж', value: `${formatMoney(totalRevenue)} ₽`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10' });
-      list.push({ label: 'Уникальных клиентов', value: uniqueClients, icon: UsersIcon, color: 'text-amber-400', bg: 'bg-amber-500/10' });
+      list.push({
+        label: "Сумма продаж",
+        value: `${formatMoney(totalRevenue)} ₽`,
+        icon: DollarSign,
+        color: "text-emerald-400",
+        bg: "bg-emerald-500/10",
+      });
+      list.push({
+        label: "Уникальных клиентов",
+        value: uniqueClients,
+        icon: UsersIcon,
+        color: "text-amber-400",
+        bg: "bg-amber-500/10",
+      });
     }
     return list;
   }, [visible, canSeeClient]);
 
   const handleExport = () => {
-    const rows = visible.map(s => ({
-      'Код': s.code || '',
-      'Клиент': getClientName(s),
-      'Телефон': getClientPhone(s),
-      'Адрес': getClientAddress(s),
-      'Модель': s.model || '',
-      'Размер': s.size || '',
-      'Полотно': s.canvas || '',
-      'Цвет': s.color || '',
-      'Цена (₽)': getPrice(s),
-      'Аванс (₽)': s.advance || 0,
-      'Админ': s.adminName || '',
-      'Сборщик': s.assemblerName || '',
-      'Оптовик': s.wholesaler?.name || '',
-      'Создано': s.createdAt ? new Date(s.createdAt).toLocaleString('ru-RU') : '',
-      'Отгружено': s.shippedAt ? new Date(s.shippedAt).toLocaleString('ru-RU') : '',
+    const rows = visible.map((s) => ({
+      Код: s.code || "",
+      Клиент: getClientName(s),
+      Телефон: getClientPhone(s),
+      Адрес: getClientAddress(s),
+      Модель: s.model || "",
+      "Размер полотна": s.size || "",
+      "Размер коробки": s.sizeFrame || "",
+      "Размер проёма": s.sizeOpening || "",
+      Полотно: s.canvas || "",
+      Цвет: s.color || "",
+      "Цена (₽)": getPrice(s),
+      "Аванс (₽)": s.advance || 0,
+      Админ: s.adminName || "",
+      Сборщик: s.assemblerName || "",
+      Оптовик: s.wholesaler?.name || "",
+      Создано: s.createdAt ? new Date(s.createdAt).toLocaleString("ru-RU") : "",
+      Отгружено: s.shippedAt
+        ? new Date(s.shippedAt).toLocaleString("ru-RU")
+        : "",
     }));
-    if (rows.length === 0) rows.push({ 'Код': '—' });
+    if (rows.length === 0) rows.push({ Код: "—" });
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 8 }, { wch: 22 }, { wch: 18 }, { wch: 32 }, { wch: 20 }, { wch: 14 },
-      { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
-      { wch: 18 }, { wch: 20 }, { wch: 20 },
+    ws["!cols"] = [
+      { wch: 8 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 32 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 20 },
     ];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Архив');
-    XLSX.writeFile(wb, `DOORMAN_Архив_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Архив");
+    XLSX.writeFile(
+      wb,
+      `DOORMAN_Архив_${new Date().toISOString().split("T")[0]}.xlsx`,
+    );
   };
 
   return (
@@ -126,12 +180,14 @@ const Archive = () => {
               {visible.length}
             </span>
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Отгруженные заказы и история клиентов</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Отгруженные заказы и история клиентов
+          </p>
         </div>
         <button
           onClick={handleExport}
           disabled={visible.length === 0}
-          className="px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-gray-300 font-medium rounded-xl transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+          className="px-4 py-2.5 bg-white/4 hover:bg-white/8 border border-white/6 text-gray-300 font-medium rounded-xl transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
         >
           <FileDown size={16} /> Excel
         </button>
@@ -140,8 +196,13 @@ const Archive = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {stats.map((s, i) => (
-          <div key={i} className="bg-[#111114] border border-white/[0.06] rounded-2xl p-5 flex items-center gap-4">
-            <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color}`}>
+          <div
+            key={i}
+            className="bg-[#111114] border border-white/6 rounded-2xl p-5 flex items-center gap-4"
+          >
+            <div
+              className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color}`}
+            >
               <s.icon size={20} />
             </div>
             <div>
@@ -155,7 +216,10 @@ const Archive = () => {
       {/* Filters */}
       <div className="bg-[#111114] border border-white/[0.06] rounded-2xl p-4 flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600"
+            size={16}
+          />
           <input
             type="text"
             placeholder="Поиск по коду, клиенту, модели, телефону..."
@@ -181,7 +245,10 @@ const Archive = () => {
           {(fromDate || toDate) && (
             <button
               type="button"
-              onClick={() => { setFromDate(''); setToDate(''); }}
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
               className="px-3 py-2 text-xs text-gray-500 hover:text-white hover:bg-white/5 rounded-lg"
             >
               Сбросить
@@ -202,20 +269,22 @@ const Archive = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: Math.min(idx * 0.02, 0.3) }}
               onClick={() => setSelected(s)}
-              className="bg-[#111114] border border-white/[0.06] rounded-2xl p-5 hover:border-emerald-500/20 transition-all cursor-pointer group"
+              className="bg-[#1a1a20] border border-white/10 rounded-2xl p-5 hover:border-emerald-500/30 transition-all cursor-pointer group shadow-lg shadow-black/30"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 text-sm font-bold">
-                    #{s.code || '—'}
+                    #{s.code || "—"}
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate group-hover:text-[#e8de8c] transition-colors">
-                      {canSeeClient ? getClientName(s) : '•••'}
+                      {canSeeClient ? getClientName(s) : "•••"}
                     </h3>
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                       <Truck size={10} />
-                      {s.shippedAt ? new Date(s.shippedAt).toLocaleDateString('ru-RU') : '—'}
+                      {s.shippedAt
+                        ? new Date(s.shippedAt).toLocaleDateString("ru-RU")
+                        : "—"}
                     </p>
                   </div>
                 </div>
@@ -227,26 +296,36 @@ const Archive = () => {
               <div className="grid grid-cols-3 gap-2 mt-3">
                 <div className="bg-white/[0.03] rounded-lg px-2.5 py-2">
                   <p className="text-[10px] text-gray-500">Модель</p>
-                  <p className="text-xs font-medium truncate">{s.model || '—'}</p>
+                  <p className="text-xs font-medium truncate">
+                    {s.model || "—"}
+                  </p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg px-2.5 py-2">
                   <p className="text-[10px] text-gray-500">Размер</p>
-                  <p className="text-xs font-medium truncate">{s.size || '—'}</p>
+                  <p className="text-xs font-medium truncate">
+                    {s.size || "—"}
+                  </p>
                 </div>
                 <div className="bg-white/[0.03] rounded-lg px-2.5 py-2">
                   <p className="text-[10px] text-gray-500">Цвет</p>
-                  <p className="text-xs font-medium truncate">{s.color || '—'}</p>
+                  <p className="text-xs font-medium truncate">
+                    {s.color || "—"}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Телефон</p>
-                  <p className="text-xs font-medium truncate">{canSeeClient ? (getClientPhone(s) || '—') : '•••'}</p>
+                  <p className="text-xs font-medium truncate">
+                    {canSeeClient ? getClientPhone(s) || "—" : "•••"}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-500">Сумма</p>
-                  <p className="text-base font-bold text-emerald-400">{canSeeClient ? `${formatMoney(getPrice(s))} ₽` : '•••'}</p>
+                  <p className="text-base font-bold text-emerald-400">
+                    {canSeeClient ? `${formatMoney(getPrice(s))} ₽` : "•••"}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -257,10 +336,12 @@ const Archive = () => {
           <div className="col-span-full py-20 flex flex-col items-center text-center text-gray-600">
             <ArchiveIcon size={40} className="mb-3 opacity-50" />
             <p className="text-sm font-medium">
-              {salesHistory.length === 0 ? 'Архив пуст' : 'Ничего не найдено'}
+              {salesHistory.length === 0 ? "Архив пуст" : "Ничего не найдено"}
             </p>
             <p className="text-xs text-gray-700 mt-1">
-              {salesHistory.length === 0 ? 'Отгруженные заказы появятся здесь' : 'Попробуйте изменить фильтры'}
+              {salesHistory.length === 0
+                ? "Отгруженные заказы появятся здесь"
+                : "Попробуйте изменить фильтры"}
             </p>
           </div>
         )}
@@ -286,25 +367,36 @@ const Archive = () => {
               <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 font-bold">
-                    #{selected.code || '—'}
+                    #{selected.code || "—"}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-lg font-bold truncate">{canSeeClient ? getClientName(selected) : '•••'}</h2>
+                    <h2 className="text-lg font-bold truncate">
+                      {canSeeClient ? getClientName(selected) : "•••"}
+                    </h2>
                     <p className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                       {selected.createdAt && (
                         <span className="flex items-center gap-1">
-                          <Calendar size={10} /> создан {new Date(selected.createdAt).toLocaleDateString('ru-RU')}
+                          <Calendar size={10} /> создан{" "}
+                          {new Date(selected.createdAt).toLocaleDateString(
+                            "ru-RU",
+                          )}
                         </span>
                       )}
                       {selected.shippedAt && (
                         <span className="flex items-center gap-1 text-emerald-400">
-                          <Truck size={10} /> отгружен {new Date(selected.shippedAt).toLocaleDateString('ru-RU')}
+                          <Truck size={10} /> отгружен{" "}
+                          {new Date(selected.shippedAt).toLocaleDateString(
+                            "ru-RU",
+                          )}
                         </span>
                       )}
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setSelected(null)} className="p-2 hover:bg-white/5 rounded-lg text-gray-500">
+                <button
+                  onClick={() => setSelected(null)}
+                  className="p-2 hover:bg-white/5 rounded-lg text-gray-500"
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -315,10 +407,17 @@ const Archive = () => {
                     <DoorOpen size={12} /> Параметры двери
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {DOOR_FIELDS.map(f => (
-                      <div key={f.key} className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.04]">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{f.label}</p>
-                        <p className="text-sm font-medium mt-0.5 break-words">{selected[f.key] || '—'}</p>
+                    {DOOR_FIELDS.map((f) => (
+                      <div
+                        key={f.key}
+                        className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.04]"
+                      >
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                          {f.label}
+                        </p>
+                        <p className="text-sm font-medium mt-0.5 break-words">
+                          {selected[f.key] || "—"}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -326,68 +425,106 @@ const Archive = () => {
 
                 {selected.note && (
                   <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl">
-                    <p className="text-xs text-amber-400 font-medium mb-1">Примечание</p>
+                    <p className="text-xs text-amber-400 font-medium mb-1">
+                      Примечание
+                    </p>
                     <p className="text-sm">{selected.note}</p>
                   </div>
                 )}
 
                 {canSeeClient && (
-                <section>
-                  <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">Клиент и оплата</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl">
-                      <User size={14} className="text-gray-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Имя</p>
-                        <p className="text-sm font-medium">{getClientName(selected)}</p>
+                  <section>
+                    <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">
+                      Клиент и оплата
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl">
+                        <User size={14} className="text-gray-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Имя
+                          </p>
+                          <p className="text-sm font-medium">
+                            {getClientName(selected)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl">
+                        <Phone size={14} className="text-gray-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Телефон
+                          </p>
+                          <p className="text-sm font-medium">
+                            {getClientPhone(selected) || "—"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl">
+                        <MapPin size={14} className="text-gray-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Адрес
+                          </p>
+                          <p className="text-sm font-medium">
+                            {getClientAddress(selected) || "—"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 pt-2">
+                        <div className="bg-[#e8de8c]/5 border border-[#e8de8c]/10 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Цена
+                          </p>
+                          <p className="text-sm font-bold text-[#e8de8c]">
+                            {formatMoney(getPrice(selected))} ₽
+                          </p>
+                        </div>
+                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Аванс
+                          </p>
+                          <p className="text-sm font-bold text-emerald-400">
+                            {formatMoney(selected.advance)} ₽
+                          </p>
+                        </div>
+                        <div className="bg-white/[0.04] rounded-xl p-3">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Оптовик
+                          </p>
+                          <p className="text-sm font-medium truncate">
+                            {selected.wholesaler?.name || "Розница"}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl">
-                      <Phone size={14} className="text-gray-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Телефон</p>
-                        <p className="text-sm font-medium">{getClientPhone(selected) || '—'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl">
-                      <MapPin size={14} className="text-gray-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Адрес</p>
-                        <p className="text-sm font-medium">{getClientAddress(selected) || '—'}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 pt-2">
-                      <div className="bg-[#e8de8c]/5 border border-[#e8de8c]/10 rounded-xl p-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Цена</p>
-                        <p className="text-sm font-bold text-[#e8de8c]">{formatMoney(getPrice(selected))} ₽</p>
-                      </div>
-                      <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Аванс</p>
-                        <p className="text-sm font-bold text-emerald-400">{formatMoney(selected.advance)} ₽</p>
-                      </div>
-                      <div className="bg-white/[0.04] rounded-xl p-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Оптовик</p>
-                        <p className="text-sm font-medium truncate">{selected.wholesaler?.name || 'Розница'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </section>
+                  </section>
                 )}
 
                 {(selected.adminName || selected.assemblerName) && (
                   <section>
-                    <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">Команда</h4>
+                    <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">
+                      Команда
+                    </h4>
                     <div className="grid grid-cols-2 gap-2">
                       {selected.adminName && (
                         <div className="bg-white/[0.03] rounded-xl p-3">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">Админ</p>
-                          <p className="text-sm font-medium">{selected.adminName}</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Админ
+                          </p>
+                          <p className="text-sm font-medium">
+                            {selected.adminName}
+                          </p>
                         </div>
                       )}
                       {selected.assemblerName && (
                         <div className="bg-white/[0.03] rounded-xl p-3">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">Сборщик</p>
-                          <p className="text-sm font-medium">{selected.assemblerName}</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                            Сборщик
+                          </p>
+                          <p className="text-sm font-medium">
+                            {selected.assemblerName}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -396,7 +533,9 @@ const Archive = () => {
 
                 {selected.photos?.length > 0 && (
                   <section>
-                    <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">Фото заказа</h4>
+                    <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">
+                      Фото заказа
+                    </h4>
                     <div className="flex flex-wrap gap-2">
                       {selected.photos.map((p, i) => (
                         <img

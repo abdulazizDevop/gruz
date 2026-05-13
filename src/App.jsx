@@ -1,8 +1,15 @@
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { OrderProvider, useOrders } from './context/OrderContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { lazy, Suspense } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useLocation,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { OrderProvider, useOrders } from "./context/OrderContext";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -18,21 +25,20 @@ import {
   UserCheck,
   PackageCheck,
   ChevronLeft,
-  Archive
-} from 'lucide-react';
+  Archive,
+} from "lucide-react";
 
-import Login from './pages/Login';
-import BottomNav from './components/BottomNav';
-import { isProductionRole } from './lib/roles';
-import { hasPermission, firstAllowedPath } from './lib/permissions';
+import Login from "./pages/Login";
+import BottomNav from "./components/BottomNav";
+import { hasPermission, firstAllowedPath } from "./lib/permissions";
 
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Orders = lazy(() => import('./pages/Orders'));
-const WarehousePage = lazy(() => import('./pages/Warehouse'));
-const ReservedWarehouse = lazy(() => import('./pages/ReservedWarehouse'));
-const AdminManagement = lazy(() => import('./pages/AdminManagement'));
-const Wholesalers = lazy(() => import('./pages/Wholesalers'));
-const ArchivePage = lazy(() => import('./pages/Archive'));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Orders = lazy(() => import("./pages/Orders"));
+const WarehousePage = lazy(() => import("./pages/Warehouse"));
+const ReservedWarehouse = lazy(() => import("./pages/ReservedWarehouse"));
+const AdminManagement = lazy(() => import("./pages/AdminManagement"));
+const Wholesalers = lazy(() => import("./pages/Wholesalers"));
+const ArchivePage = lazy(() => import("./pages/Archive"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center py-20">
@@ -54,15 +60,20 @@ const ProtectedRoute = ({ children, allowedRoles, permission }) => {
   return <Navigate to={target} replace />;
 };
 
-const SidebarItem = ({ to, icon: Icon, label, active, collapsed }) => (
-  <Link to={to} className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative ${
-    active
-      ? 'bg-[#e8de8c]/10 text-[#e8de8c]'
-      : 'text-gray-500 hover:text-white hover:bg-white/5'
-  } ${collapsed ? 'justify-center px-3' : ''}`}>
+const SidebarItem = ({ to, label, active, collapsed }) => (
+  <Link
+    to={to}
+    className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative ${
+      active
+        ? "bg-[#e8de8c]/10 text-[#e8de8c]"
+        : "text-gray-500 hover:text-white hover:bg-white/5"
+    } ${collapsed ? "justify-center px-3" : ""}`}
+  >
     <Icon size={20} strokeWidth={active ? 2.5 : 2} />
     {!collapsed && <span className="font-semibold text-sm">{label}</span>}
-    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#e8de8c] rounded-r-full" />}
+    {active && (
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#e8de8c] rounded-r-full" />
+    )}
   </Link>
 );
 
@@ -77,23 +88,28 @@ const Layout = ({ children }) => {
     setIsMobileOpen(false);
   }, [location.pathname]);
 
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
-  const isSuperAdmin = currentUser?.role === 'superadmin';
-  const isWarehouse = currentUser?.role === 'warehouse';
-  const isAssembler = isProductionRole(currentUser?.role);
+  const isSuperAdmin = currentUser?.role === "superadmin";
 
-  const readyCount = orders.filter(o => o.status?.includes('✅')).length;
+  const readyCount = orders.filter((o) => o.status?.includes("✅")).length;
   const desktopWidth = isDesktopCollapsed ? 72 : 260;
 
-  const SidebarContent = ({ collapsed }) => (
+  const renderSidebar = ({ collapsed }) => (
     <>
-      <div className={`h-16 flex items-center border-b border-white/[0.06] ${collapsed ? 'justify-center px-2' : 'px-5 gap-3'}`}>
-        <img src="/doorman-logo.png?v=3" alt="D" className="w-8 h-8 object-contain shrink-0" />
+      <div
+        className={`h-16 flex items-center border-b border-white/[0.06] ${collapsed ? "justify-center px-2" : "px-5 gap-3"}`}
+      >
+        <img
+          src="/doorman-logo.png?v=3"
+          alt="D"
+          className="w-8 h-8 object-contain shrink-0"
+        />
         {!collapsed && (
           <span
-            style={{ fontFamily: 'Georgia, serif', color: '#e8de8c' }}
+            style={{ fontFamily: "Georgia, serif", color: "#e8de8c" }}
             className="text-lg font-bold italic tracking-wide"
-          >DoorMan</span>
+          >
+            DoorMan
+          </span>
         )}
         {!collapsed && (
           <button
@@ -120,64 +136,131 @@ const Layout = ({ children }) => {
         </button>
       )}
 
-      <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} py-4 space-y-1 overflow-y-auto`}>
-        {hasPermission(currentUser, 'dashboard') && (
+      <nav
+        className={`flex-1 ${collapsed ? "px-2" : "px-3"} py-4 space-y-1 overflow-y-auto`}
+      >
+        {hasPermission(currentUser, "dashboard") && (
           <>
-            {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mb-2">Главное</p>}
-            <SidebarItem to="/" icon={LayoutDashboard} label="Обзор" active={location.pathname === '/'} collapsed={collapsed} />
-          </>
-        )}
-
-        {(hasPermission(currentUser, 'orders') || hasPermission(currentUser, 'wholesalers')) && (
-          <>
-            {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">Торговля</p>}
-            {hasPermission(currentUser, 'orders') && (
-              <SidebarItem to="/orders" icon={ShoppingCart} label="Заказы" active={location.pathname === '/orders'} collapsed={collapsed} />
+            {!collapsed && (
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mb-2">
+                Главное
+              </p>
             )}
-            {hasPermission(currentUser, 'wholesalers') && (
-              <SidebarItem to="/wholesalers" icon={Users} label="Оптовики" active={location.pathname === '/wholesalers'} collapsed={collapsed} />
+            <SidebarItem
+              to="/"
+              icon={LayoutDashboard}
+              label="Обзор"
+              active={location.pathname === "/"}
+              collapsed={collapsed}
+            />
+          </>
+        )}
+
+        {(hasPermission(currentUser, "orders") ||
+          hasPermission(currentUser, "wholesalers")) && (
+          <>
+            {!collapsed && (
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">
+                Торговля
+              </p>
+            )}
+            {hasPermission(currentUser, "orders") && (
+              <SidebarItem
+                to="/orders"
+                icon={ShoppingCart}
+                label="Заказы"
+                active={location.pathname === "/orders"}
+                collapsed={collapsed}
+              />
+            )}
+            {hasPermission(currentUser, "wholesalers") && (
+              <SidebarItem
+                to="/wholesalers"
+                icon={Users}
+                label="Оптовики"
+                active={location.pathname === "/wholesalers"}
+                collapsed={collapsed}
+              />
             )}
           </>
         )}
 
-        {hasPermission(currentUser, 'warehouse') && (
+        {hasPermission(currentUser, "warehouse") && (
           <>
-            {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">Склад</p>}
-            <SidebarItem to="/warehouse" icon={Warehouse} label="Склад" active={location.pathname === '/warehouse'} collapsed={collapsed} />
+            {!collapsed && (
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">
+                Склад
+              </p>
+            )}
+            <SidebarItem
+              to="/warehouse"
+              icon={Warehouse}
+              label="Склад"
+              active={location.pathname === "/warehouse"}
+              collapsed={collapsed}
+            />
           </>
         )}
 
-        {hasPermission(currentUser, 'reserved') && (
-          <SidebarItem to="/reserved" icon={PackageCheck} label="Заказной склад" active={location.pathname === '/reserved'} collapsed={collapsed} />
+        {hasPermission(currentUser, "reserved") && (
+          <SidebarItem
+            to="/reserved"
+            icon={PackageCheck}
+            label="Заказной склад"
+            active={location.pathname === "/reserved"}
+            collapsed={collapsed}
+          />
         )}
 
-        {hasPermission(currentUser, 'archive') && (
-          <SidebarItem to="/archive" icon={Archive} label="Архив" active={location.pathname === '/archive'} collapsed={collapsed} />
+        {hasPermission(currentUser, "archive") && (
+          <SidebarItem
+            to="/archive"
+            icon={Archive}
+            label="Архив"
+            active={location.pathname === "/archive"}
+            collapsed={collapsed}
+          />
         )}
 
         {isSuperAdmin && (
           <>
-            {!collapsed && <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">Система</p>}
-            <SidebarItem to="/admins" icon={UserCheck} label="Управление" active={location.pathname === '/admins'} collapsed={collapsed} />
+            {!collapsed && (
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-4 mt-5 mb-2">
+                Система
+              </p>
+            )}
+            <SidebarItem
+              to="/admins"
+              icon={UserCheck}
+              label="Управление"
+              active={location.pathname === "/admins"}
+              collapsed={collapsed}
+            />
           </>
         )}
       </nav>
 
       <div className="border-t border-white/[0.06] p-3">
-        <div className={`flex items-center gap-3 p-2 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
+        <div
+          className={`flex items-center gap-3 p-2 rounded-xl ${collapsed ? "justify-center" : ""}`}
+        >
           <div className="w-9 h-9 bg-[#e8de8c]/15 rounded-xl flex items-center justify-center text-[#e8de8c] text-sm font-bold shrink-0">
             {currentUser?.name?.[0]}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{currentUser?.name}</p>
-              <p className="text-[10px] text-gray-500 capitalize">{currentUser?.role}</p>
+              <p className="text-sm font-semibold truncate">
+                {currentUser?.name}
+              </p>
+              <p className="text-[10px] text-gray-500 capitalize">
+                {currentUser?.role}
+              </p>
             </div>
           )}
         </div>
         <button
           onClick={logout}
-          className={`w-full mt-1 flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-red-400 hover:bg-red-500/5 rounded-xl transition-colors text-sm ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full mt-1 flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-red-400 hover:bg-red-500/5 rounded-xl transition-colors text-sm ${collapsed ? "justify-center" : ""}`}
         >
           <LogOut size={18} />
           {!collapsed && <span className="font-medium">Выйти</span>}
@@ -195,7 +278,7 @@ const Layout = ({ children }) => {
         transition={{ duration: 0.2 }}
         className="hidden md:flex fixed top-0 left-0 h-screen bg-[#0f0f12] border-r border-white/[0.06] flex-col z-50"
       >
-        <SidebarContent collapsed={isDesktopCollapsed} />
+        {renderSidebar({ collapsed: isDesktopCollapsed })}
       </motion.aside>
 
       {/* Mobile sidebar */}
@@ -210,13 +293,13 @@ const Layout = ({ children }) => {
               className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
             />
             <motion.aside
-              initial={{ x: '-100%' }}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'tween', duration: 0.25 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "tween", duration: 0.25 }}
               className="md:hidden fixed top-0 left-0 h-screen w-[260px] max-w-[85vw] bg-[#0f0f12] border-r border-white/[0.06] flex flex-col z-[51]"
             >
-              <SidebarContent collapsed={false} />
+              {renderSidebar({ collapsed: false })}
             </motion.aside>
           </>
         )}
@@ -225,16 +308,22 @@ const Layout = ({ children }) => {
       {/* Main */}
       <main
         className="flex-1 flex flex-col h-screen overflow-hidden transition-all duration-200 ml-0 md:[margin-left:var(--sidebar-w)]"
-        style={{ '--sidebar-w': `${desktopWidth}px` }}
+        style={{ "--sidebar-w": `${desktopWidth}px` }}
       >
         {/* Top bar */}
         <header
           className="border-b border-white/[0.06] flex items-center justify-between gap-3 px-4 sm:px-6 bg-[#09090b]/90 backdrop-blur-xl sticky top-0 z-40"
-          style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(4rem + env(safe-area-inset-top))' }}
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            minHeight: "calc(4rem + env(safe-area-inset-top))",
+          }}
         >
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
             <div className="relative w-full max-w-md hidden sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600"
+                size={16}
+              />
               <input
                 type="text"
                 placeholder="Поиск..."
@@ -242,9 +331,11 @@ const Layout = ({ children }) => {
               />
             </div>
             <span
-              style={{ fontFamily: 'Georgia, serif', color: '#e8de8c' }}
+              style={{ fontFamily: "Georgia, serif", color: "#e8de8c" }}
               className="sm:hidden text-base font-bold italic tracking-wide"
-            >DoorMan</span>
+            >
+              DoorMan
+            </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -255,7 +346,9 @@ const Layout = ({ children }) => {
               >
                 <AlertCircle size={14} className="text-amber-500" />
                 <span className="text-xs font-semibold text-amber-500">
-                  <span className="hidden sm:inline">{readyCount} к отгрузке</span>
+                  <span className="hidden sm:inline">
+                    {readyCount} к отгрузке
+                  </span>
                   <span className="sm:hidden">{readyCount}</span>
                 </span>
               </Link>
@@ -280,7 +373,10 @@ const Layout = ({ children }) => {
         {/* Content */}
         <div
           className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 md:pb-6"
-          style={{ paddingBottom: 'max(6rem, calc(5rem + env(safe-area-inset-bottom)))' }}
+          style={{
+            paddingBottom:
+              "max(6rem, calc(5rem + env(safe-area-inset-bottom)))",
+          }}
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -302,13 +398,13 @@ const Layout = ({ children }) => {
       {/* iPhone-style floating notifications */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none">
         <AnimatePresence>
-          {notifications.map(n => (
+          {notifications.map((n) => (
             <motion.div
               key={n.id}
               initial={{ y: -80, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -40, opacity: 0, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+              transition={{ type: "spring", damping: 22, stiffness: 320 }}
               className="pointer-events-auto bg-[#1c1c1e]/90 backdrop-blur-2xl border border-white/10 rounded-[22px] px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.6)] flex items-start gap-3 min-w-[320px] max-w-[380px]"
             >
               <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[10px] flex items-center justify-center shrink-0 shadow-lg">
@@ -316,10 +412,16 @@ const Layout = ({ children }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-semibold text-[15px] text-white leading-tight">{n.title}</h4>
-                  <span className="text-[10px] text-gray-400 font-medium shrink-0">сейчас</span>
+                  <h4 className="font-semibold text-[15px] text-white leading-tight">
+                    {n.title}
+                  </h4>
+                  <span className="text-[10px] text-gray-400 font-medium shrink-0">
+                    сейчас
+                  </span>
                 </div>
-                <p className="text-[13px] text-gray-300 mt-0.5 leading-snug">{n.message}</p>
+                <p className="text-[13px] text-gray-300 mt-0.5 leading-snug">
+                  {n.message}
+                </p>
               </div>
             </motion.div>
           ))}
@@ -335,45 +437,80 @@ const App = () => {
       <OrderProvider>
         <Router>
           <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={
-              <ProtectedRoute permission="dashboard">
-                <Layout><Dashboard /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/orders" element={
-              <ProtectedRoute permission="orders">
-                <Layout><Orders /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/warehouse" element={
-              <ProtectedRoute permission="warehouse">
-                <Layout><WarehousePage /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/reserved" element={
-              <ProtectedRoute permission="reserved">
-                <Layout><ReservedWarehouse /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/admins" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <Layout><AdminManagement /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/wholesalers" element={
-              <ProtectedRoute permission="wholesalers">
-                <Layout><Wholesalers /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/archive" element={
-              <ProtectedRoute permission="archive">
-                <Layout><ArchivePage /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute permission="dashboard">
+                    <Layout>
+                      <Dashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/orders"
+                element={
+                  <ProtectedRoute permission="orders">
+                    <Layout>
+                      <Orders />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/warehouse"
+                element={
+                  <ProtectedRoute permission="warehouse">
+                    <Layout>
+                      <WarehousePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reserved"
+                element={
+                  <ProtectedRoute permission="reserved">
+                    <Layout>
+                      <ReservedWarehouse />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admins"
+                element={
+                  <ProtectedRoute allowedRoles={["superadmin"]}>
+                    <Layout>
+                      <AdminManagement />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/wholesalers"
+                element={
+                  <ProtectedRoute permission="wholesalers">
+                    <Layout>
+                      <Wholesalers />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/archive"
+                element={
+                  <ProtectedRoute permission="archive">
+                    <Layout>
+                      <ArchivePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </Suspense>
         </Router>
       </OrderProvider>
