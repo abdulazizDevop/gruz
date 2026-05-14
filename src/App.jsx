@@ -60,7 +60,7 @@ const ProtectedRoute = ({ children, allowedRoles, permission }) => {
   return <Navigate to={target} replace />;
 };
 
-const SidebarItem = ({ to, label, active, collapsed }) => (
+const SidebarItem = ({ to, icon: Icon, label, active, collapsed }) => (
   <Link
     to={to}
     className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative ${
