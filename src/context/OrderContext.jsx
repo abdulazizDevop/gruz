@@ -249,13 +249,19 @@ export const OrderProvider = ({ children }) => {
       patch.assemblerId = userId || null;
       patch.assemblerName = userName || null;
       patch.readyAt = new Date().toISOString();
+    } else {
+      patch.assemblerId = null;
+      patch.assemblerName = null;
+      patch.readyAt = null;
     }
     await updateDoc(doc(db, 'orders', orderId), patch);
   };
 
   const revertReadyStatus = async (orderId) => {
+    const order = orders.find(o => o.id === orderId);
+    const nextStatus = order?.isUrgent ? '🚨 Срочное' : '💭 В процессе';
     await updateDoc(doc(db, 'orders', orderId), {
-      status: '💭 В процессе',
+      status: nextStatus,
       assemblerId: null,
       assemblerName: null,
       readyAt: null,

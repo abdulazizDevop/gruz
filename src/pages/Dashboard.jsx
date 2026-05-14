@@ -165,25 +165,25 @@ const Dashboard = () => {
                 {visibleOrders.slice(0, 6).map((order) => {
                   const isUrgentOrder = order.isUrgent || order.status?.includes('🚨');
                   return (
-                  <tr key={order.id} className={`border-b border-white/[0.03] transition-colors ${
-                    isUrgentOrder ? 'bg-red-500/[0.06] hover:bg-red-500/[0.1]' : 'hover:bg-white/[0.02]'
+                  <tr key={order.id} className={`border-b transition-colors ${
+                    isUrgentOrder ? 'bg-red-600 border-red-400 hover:bg-red-500' : 'border-white/[0.03] hover:bg-white/[0.02]'
                   }`}>
-                    <td className="px-5 py-4 text-sm font-semibold text-[#e8de8c]">#{order.code}</td>
+                    <td className={`px-5 py-4 text-sm font-bold ${isUrgentOrder ? 'text-white' : 'text-[#e8de8c]'}`}>#{order.code}</td>
                     <td className="px-5 py-4">
-                      <p className="text-sm font-medium">{canSeeClient ? (order.client?.name || 'Без имени') : '•••'}</p>
-                      <p className="text-xs text-gray-500">{order.wholesaler ? 'Оптовик' : 'Розница'}</p>
+                      <p className={`text-sm font-medium ${isUrgentOrder ? 'text-white' : ''}`}>{canSeeClient ? (order.client?.name || 'Без имени') : '•••'}</p>
+                      <p className={`text-xs ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>{order.wholesaler ? 'Оптовик' : 'Розница'}</p>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        isUrgentOrder ? 'bg-white text-red-700 animate-pulse' :
                         order.status?.includes('✅') ? 'bg-emerald-500/15 text-emerald-300' :
-                        order.status?.includes('🚨') ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' :
                         'bg-blue-500/15 text-blue-300'
                       }`}>{order.status}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm font-semibold">
+                    <td className={`px-5 py-4 text-sm font-semibold ${isUrgentOrder ? 'text-white' : ''}`}>
                       {canSeeClient ? `${(order.price || order.total || 0).toLocaleString('ru-RU')} ₽` : '•••'}
                     </td>
-                    <td className="px-5 py-4 text-xs text-gray-500 text-right">{new Date(order.createdAt).toLocaleDateString('ru-RU')}</td>
+                    <td className={`px-5 py-4 text-xs text-right ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>{new Date(order.createdAt).toLocaleDateString('ru-RU')}</td>
                   </tr>
                   );
                 })}

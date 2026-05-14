@@ -448,49 +448,53 @@ const Orders = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: idx * 0.03 }}
               onClick={() => setSelectedOrder(order)}
-              className={`rounded-2xl p-5 cursor-pointer group transition-all shadow-lg shadow-black/30 ${
+              className={`rounded-2xl p-5 cursor-pointer group transition-all ${
                 isUrgentOrder
-                  ? 'bg-gradient-to-br from-red-500/[0.08] to-red-500/[0.02] border-2 border-red-500/40 hover:border-red-500/60 ring-1 ring-red-500/20'
-                  : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25'
+                  ? 'bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60'
+                  : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold ${
+                    isUrgentOrder ? 'bg-white text-red-700' :
                     order.status?.includes('✅') ? 'bg-emerald-500/10 text-emerald-400' :
-                    order.status?.includes('🚨') ? 'bg-red-500/10 text-red-400' :
                     'bg-blue-500/10 text-blue-400'
                   }`}>#{order.code}</div>
                   <div>
-                    <h3 className="font-semibold group-hover:text-[#e8de8c] transition-colors">
+                    <h3 className={`font-semibold transition-colors ${
+                      isUrgentOrder ? 'text-white' : 'group-hover:text-[#e8de8c]'
+                    }`}>
                       {canSeeClient ? (order.client?.name || 'Без имени') : `Заказ #${order.code}`}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                    <div className={`flex items-center gap-1.5 text-xs mt-0.5 ${
+                      isUrgentOrder ? 'text-red-100' : 'text-gray-500'
+                    }`}>
                       <Calendar size={10} />
                       {new Date(order.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                  isUrgentOrder ? 'bg-white text-red-700 animate-pulse' :
                   order.status?.includes('✅') ? 'bg-emerald-500/15 text-emerald-300' :
-                  order.status?.includes('🚨') ? 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse' :
                   'bg-blue-500/15 text-blue-300'
                 }`}>{order.status}</span>
               </div>
 
               {/* Door quick specs */}
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-red-500/[0.06]' : 'bg-white/[0.04]'}`}>
-                  <p className="text-[10px] text-gray-500">Модель</p>
-                  <p className="text-sm font-medium truncate">{order.model || '—'}</p>
+                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-black/30' : 'bg-white/[0.04]'}`}>
+                  <p className={`text-[10px] ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Модель</p>
+                  <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.model || '—'}</p>
                 </div>
-                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-red-500/[0.06]' : 'bg-white/[0.04]'}`}>
-                  <p className="text-[10px] text-gray-500">Полотно</p>
-                  <p className="text-sm font-medium truncate">{order.size || '—'}</p>
+                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-black/30' : 'bg-white/[0.04]'}`}>
+                  <p className={`text-[10px] ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Полотно</p>
+                  <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.size || '—'}</p>
                 </div>
-                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-red-500/[0.06]' : 'bg-white/[0.04]'}`}>
-                  <p className="text-[10px] text-gray-500">Цвет</p>
-                  <p className="text-sm font-medium truncate">{order.color || '—'}</p>
+                <div className={`rounded-lg px-3 py-2 ${isUrgentOrder ? 'bg-black/30' : 'bg-white/[0.04]'}`}>
+                  <p className={`text-[10px] ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Цвет</p>
+                  <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.color || '—'}</p>
                 </div>
               </div>
 
@@ -506,26 +510,28 @@ const Orders = () => {
 
               {/* Price footer */}
               {canSeeClient && (
-                <div className="mt-4 grid grid-cols-3 gap-2 pt-4 border-t border-white/[0.04]">
+                <div className={`mt-4 grid grid-cols-3 gap-2 pt-4 border-t ${isUrgentOrder ? 'border-red-300/30' : 'border-white/[0.04]'}`}>
                   <div className="min-w-0">
-                    <p className="text-[10px] text-gray-500">Телефон</p>
-                    <p className="text-xs font-medium truncate">{order.client?.phone || '—'}</p>
+                    <p className={`text-[10px] ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Телефон</p>
+                    <p className={`text-xs font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.client?.phone || '—'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-gray-500">Цена</p>
-                    <p className="text-sm font-bold">{formatMoney(order.price)} ₽</p>
+                    <p className={`text-[10px] ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Цена</p>
+                    <p className={`text-sm font-bold ${isUrgentOrder ? 'text-white' : ''}`}>{formatMoney(order.price)} ₽</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-gray-500">Остаток</p>
-                    <p className="text-sm font-bold text-red-400">{formatMoney(Math.max(0, (order.price || 0) - (order.advance || 0)))} ₽</p>
+                    <p className={`text-[10px] ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Остаток</p>
+                    <p className={`text-sm font-bold ${isUrgentOrder ? 'text-white' : 'text-red-400'}`}>{formatMoney(Math.max(0, (order.price || 0) - (order.advance || 0)))} ₽</p>
                   </div>
                 </div>
               )}
 
               {order.responseRoom?.length > 0 && (
-                <div className="mt-3 px-3 py-2 bg-blue-500/5 rounded-lg flex items-center gap-2">
-                  <MessageSquare size={12} className="text-blue-400 shrink-0" />
-                  <p className="text-xs text-blue-400 truncate">
+                <div className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 ${
+                  isUrgentOrder ? 'bg-black/30' : 'bg-blue-500/5'
+                }`}>
+                  <MessageSquare size={12} className={`shrink-0 ${isUrgentOrder ? 'text-red-100' : 'text-blue-400'}`} />
+                  <p className={`text-xs truncate ${isUrgentOrder ? 'text-white' : 'text-blue-400'}`}>
                     {order.responseRoom[order.responseRoom.length - 1].userName}: {order.responseRoom[order.responseRoom.length - 1].message}
                   </p>
                 </div>
