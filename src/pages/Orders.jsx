@@ -776,7 +776,7 @@ const Orders = () => {
       {/* Order details modal */}
       <AnimatePresence>
         {activeSelected && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -788,13 +788,13 @@ const Orders = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-5xl bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10 flex flex-col max-h-[92vh]"
+              className="w-full max-w-5xl bg-[#111114] border-0 sm:border sm:border-white/10 sm:rounded-2xl shadow-2xl relative z-10 flex flex-col h-full sm:h-auto max-h-screen sm:max-h-[92vh]"
             >
-              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="p-3 sm:p-5 border-b border-white/[0.06] flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="flex items-center gap-1.5 px-2.5 py-2 -ml-1 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-colors shrink-0"
+                    className="flex items-center gap-1.5 px-2 py-2 -ml-1 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-colors shrink-0"
                     title="Назад"
                   >
                     <ArrowLeft size={18} />
@@ -802,16 +802,16 @@ const Orders = () => {
                       Назад
                     </span>
                   </button>
-                  <div className="w-12 h-12 bg-[#e8de8c]/10 rounded-xl flex items-center justify-center text-[#e8de8c] font-bold text-lg shrink-0">
+                  <div className="w-9 h-9 sm:w-12 sm:h-12 bg-[#e8de8c]/10 rounded-xl flex items-center justify-center text-[#e8de8c] font-bold text-xs sm:text-lg shrink-0">
                     #{activeSelected.code}
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold truncate">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm sm:text-lg font-bold truncate">
                       {canSeeClient
                         ? activeSelected.client?.name || "Без имени"
                         : `Заказ #${activeSelected.code}`}
                     </h2>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-[10px] sm:text-xs text-gray-500 truncate hidden sm:block">
                       Создал: {activeSelected.adminName} •{" "}
                       {new Date(activeSelected.createdAt).toLocaleString(
                         "ru-RU",
@@ -819,13 +819,14 @@ const Orders = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                   {isAdmin && (
                     <button
                       onClick={() => openEditOrder(activeSelected)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-xs font-semibold text-blue-400 transition-colors"
+                      className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-xs font-semibold text-blue-400 transition-colors"
+                      title="Редактировать"
                     >
-                      <Edit2 size={14} /> Редактировать
+                      <Edit2 size={14} /> <span className="hidden sm:inline">Редактировать</span>
                     </button>
                   )}
                   {(isSuperAdmin ||
@@ -847,10 +848,10 @@ const Orders = () => {
                           window.alert("Не удалось удалить заказ");
                         }
                       }}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-xs font-semibold text-red-400 transition-colors"
+                      className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-xs font-semibold text-red-400 transition-colors"
                       title="Удалить заказ"
                     >
-                      <Trash2 size={14} /> Удалить
+                      <Trash2 size={14} /> <span className="hidden sm:inline">Удалить</span>
                     </button>
                   )}
                   <button
@@ -862,21 +863,22 @@ const Orders = () => {
                   </button>
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="p-2 hover:bg-white/5 rounded-lg text-gray-500"
+                    className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hidden sm:flex"
+                    title="Закрыть"
                   >
                     <X size={18} />
                   </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-5">
                   {/* Status */}
                   <section>
                     <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">
                       Статус
                     </h4>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {["🚨 Срочное", "💭 В процессе", "✅ Сделано"].map(
                         (s) => {
                           const isUrgentBtn = s.includes("🚨");
@@ -900,7 +902,7 @@ const Orders = () => {
                                   ? "Нет права ставить «Срочное»"
                                   : undefined
                               }
-                              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              className={`px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all text-center ${
                                 activeSelected.status === s
                                   ? "bg-[#e8de8c] text-black"
                                   : "bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]"
@@ -1226,7 +1228,7 @@ const Orders = () => {
       {/* Add order modal */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1238,17 +1240,25 @@ const Orders = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-[#111114] border border-white/10 rounded-2xl shadow-2xl relative z-10"
+              className="w-full max-w-2xl bg-[#111114] border-0 sm:border sm:border-white/10 sm:rounded-2xl shadow-2xl relative z-10 h-full sm:h-auto"
             >
               <form
                 onSubmit={handleCreateOrder}
-                className="flex flex-col max-h-[92vh]"
+                className="flex flex-col h-full sm:h-auto max-h-screen sm:max-h-[92vh]"
               >
-                <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
-                  <div>
-                    <h2 className="text-lg font-bold">
+                <div className="p-3 sm:p-5 border-b border-white/[0.06] flex items-center justify-between gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={closeOrderForm}
+                    className="flex items-center gap-1.5 px-2 py-2 -ml-1 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-colors shrink-0 sm:hidden"
+                    title="Назад"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-bold truncate">
                       {editingOrderId
-                        ? `Редактировать заказ #${orders.find((o) => o.id === editingOrderId)?.code || ""}`
+                        ? `Редактировать #${orders.find((o) => o.id === editingOrderId)?.code || ""}`
                         : "Новый заказ"}
                     </h2>
                     <div className="flex items-center gap-3 mt-1">
@@ -1257,7 +1267,7 @@ const Orders = () => {
                           Код: #{nextOrderNumber}
                         </span>
                       )}
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-xs text-gray-500 hidden sm:flex items-center gap-1">
                         <Calendar size={10} />{" "}
                         {new Date().toLocaleString("ru-RU")}
                       </span>
@@ -1266,13 +1276,13 @@ const Orders = () => {
                   <button
                     type="button"
                     onClick={closeOrderForm}
-                    className="p-1.5 hover:bg-white/5 rounded-lg"
+                    className="p-1.5 hover:bg-white/5 rounded-lg shrink-0 hidden sm:flex"
                   >
                     <X size={20} />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-5">
                   {/* Door specs */}
                   <section>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
