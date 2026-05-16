@@ -790,7 +790,10 @@ const Orders = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               className="w-full max-w-5xl bg-[#111114] border-0 sm:border sm:border-white/10 sm:rounded-2xl shadow-2xl relative z-10 flex flex-col h-full sm:h-auto max-h-screen sm:max-h-[92vh]"
             >
-              <div className="p-3 sm:p-5 border-b border-white/[0.06] flex items-center justify-between gap-2 shrink-0">
+              <div
+                className="px-3 sm:px-5 pb-3 sm:pb-5 border-b border-white/[0.06] flex items-center justify-between gap-2 shrink-0"
+                style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+              >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <button
                     onClick={() => setSelectedOrder(null)}
@@ -871,7 +874,10 @@ const Orders = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div
+                className="flex-1 overflow-y-auto px-3 sm:px-5 pt-3 sm:pt-5 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6"
+                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+              >
                 <div className="space-y-5">
                   {/* Status */}
                   <section>
@@ -1246,7 +1252,10 @@ const Orders = () => {
                 onSubmit={handleCreateOrder}
                 className="flex flex-col h-full sm:h-auto max-h-screen sm:max-h-[92vh]"
               >
-                <div className="p-3 sm:p-5 border-b border-white/[0.06] flex items-center justify-between gap-2 shrink-0">
+                <div
+                  className="px-3 sm:px-5 pb-3 sm:pb-5 border-b border-white/[0.06] flex items-center justify-between gap-2 shrink-0"
+                  style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+                >
                   <button
                     type="button"
                     onClick={closeOrderForm}
@@ -1654,7 +1663,10 @@ const Orders = () => {
                   </section>
                 </div>
 
-                <div className="p-5 border-t border-white/[0.06] flex items-center justify-between shrink-0">
+                <div
+                  className="px-5 pt-5 border-t border-white/[0.06] flex items-center justify-between shrink-0"
+                  style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+                >
                   <div>
                     <p className="text-xs text-gray-500">Остаток к оплате</p>
                     <p className="text-lg font-bold">
