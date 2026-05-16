@@ -305,8 +305,6 @@ export const OrderProvider = ({ children }) => {
         // Door specs
         model: orderToShip.model || '',
         size: orderToShip.size || '',
-        sizeFrame: orderToShip.sizeFrame || '',
-        sizeOpening: orderToShip.sizeOpening || '',
         canvas: orderToShip.canvas || '',
         color: orderToShip.color || '',
         casing: orderToShip.casing || '',

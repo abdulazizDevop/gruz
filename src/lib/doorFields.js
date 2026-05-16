@@ -10,9 +10,7 @@ export const OPENING_OPTIONS = [
 
 export const DOOR_FIELDS = [
   { key: 'model', label: 'Модель' },
-  { key: 'size', label: 'Размер полотна' },
-  { key: 'sizeFrame', label: 'Размер коробки' },
-  { key: 'sizeOpening', label: 'Размер проёма' },
+  { key: 'size', label: 'Размер' },
   { key: 'canvas', label: 'Полотно' },
   { key: 'opening', label: 'Открывание' },
   { key: 'color', label: 'Цвет' },

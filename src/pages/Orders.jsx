@@ -49,8 +49,6 @@ const formatMoney = (v) => {
 const EMPTY_ORDER = {
   model: "",
   size: "",
-  sizeFrame: "",
-  sizeOpening: "",
   canvas: "",
   opening: "",
   color: "",
@@ -214,8 +212,6 @@ const Orders = () => {
     setNewOrder({
       model: order.model || "",
       size: order.size || "",
-      sizeFrame: order.sizeFrame || "",
-      sizeOpening: order.sizeOpening || "",
       canvas: order.canvas || "",
       opening: order.opening || "",
       color: order.color || "",
@@ -618,7 +614,7 @@ const Orders = () => {
                     <p
                       className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
                     >
-                      Полотно
+                      Размер
                     </p>
                     <p
                       className={`text-sm font-medium truncate ${isUrgentOrder ? "text-white" : ""}`}
@@ -1317,7 +1313,7 @@ const Orders = () => {
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
-                          Размер полотна <span className="text-red-400">*</span>
+                          Размер <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="text"
@@ -1331,34 +1327,6 @@ const Orders = () => {
                           placeholder="Напр. 2050x860"
                         />
                         <FieldError msg={errors.size} />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
-                          Размер коробки
-                        </label>
-                        <input
-                          type="text"
-                          value={newOrder.sizeFrame}
-                          onChange={(e) =>
-                            updateField("sizeFrame", e.target.value)
-                          }
-                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
-                          placeholder="Напр. 2070x880"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
-                          Размер проёма
-                        </label>
-                        <input
-                          type="text"
-                          value={newOrder.sizeOpening}
-                          onChange={(e) =>
-                            updateField("sizeOpening", e.target.value)
-                          }
-                          className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 focus:outline-none focus:border-[#e8de8c]/30 text-sm"
-                          placeholder="Напр. 2100x920"
-                        />
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
@@ -1415,8 +1383,6 @@ const Orders = () => {
                           ![
                             "model",
                             "size",
-                            "sizeFrame",
-                            "sizeOpening",
                             "canvas",
                             "opening",
                             "color",

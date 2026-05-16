@@ -27,9 +27,7 @@ const formatMoney = (v) => Number(v || 0).toLocaleString("ru-RU");
 
 const DOOR_FIELDS = [
   { key: "model", label: "Модель" },
-  { key: "size", label: "Размер полотна" },
-  { key: "sizeFrame", label: "Размер коробки" },
-  { key: "sizeOpening", label: "Размер проёма" },
+  { key: "size", label: "Размер" },
   { key: "canvas", label: "Полотно" },
   { key: "color", label: "Цвет" },
   { key: "casing", label: "Наличник" },
@@ -128,9 +126,7 @@ const Archive = () => {
       Телефон: getClientPhone(s),
       Адрес: getClientAddress(s),
       Модель: s.model || "",
-      "Размер полотна": s.size || "",
-      "Размер коробки": s.sizeFrame || "",
-      "Размер проёма": s.sizeOpening || "",
+      Размер: s.size || "",
       Полотно: s.canvas || "",
       Цвет: s.color || "",
       "Цена (₽)": getPrice(s),

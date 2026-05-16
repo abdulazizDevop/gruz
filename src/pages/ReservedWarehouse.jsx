@@ -103,22 +103,14 @@ const ReservedWarehouse = () => {
 
                 <div className={`h-px lg:h-10 w-full lg:w-px ${isUrgentOrder ? 'bg-red-300/40' : 'bg-white/[0.06]'}`} />
 
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
                   <div>
                     <p className={`text-[10px] mb-1 flex items-center gap-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}><DoorOpen size={10} /> Модель</p>
                     <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.model || '—'}</p>
                   </div>
                   <div>
-                    <p className={`text-[10px] mb-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Полотно</p>
+                    <p className={`text-[10px] mb-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Размер</p>
                     <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.size || '—'}</p>
-                  </div>
-                  <div>
-                    <p className={`text-[10px] mb-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Коробка</p>
-                    <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.sizeFrame || '—'}</p>
-                  </div>
-                  <div>
-                    <p className={`text-[10px] mb-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Проём</p>
-                    <p className={`text-sm font-medium truncate ${isUrgentOrder ? 'text-white' : ''}`}>{order.sizeOpening || '—'}</p>
                   </div>
                   <div>
                     <p className={`text-[10px] mb-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>Цена</p>
