@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   collection,
   doc,
@@ -382,32 +382,34 @@ export const OrderProvider = ({ children }) => {
     await setDoc(doc(db, 'meta', 'counter'), { nextOrderNumber: n }, { merge: true });
   };
 
+  const contextValue = useMemo(() => ({
+    orders,
+    inventory,
+    wholesalers,
+    notifications,
+    nextOrderNumber,
+    backupConfig,
+    createOrder,
+    updateOrder,
+    updateOrderStatus,
+    revertReadyStatus,
+    addResponse,
+    markShipped,
+    deleteOrder,
+    addInventoryItem,
+    updateInventoryItem,
+    deleteInventoryItem,
+    addWholesaler,
+    updateWholesaler,
+    deleteWholesaler,
+    setBackupConfig,
+    setNextOrderNumberValue,
+    addNotification,
+  }), [orders, inventory, wholesalers, notifications, nextOrderNumber, backupConfig, addNotification]);
+
   return (
     <OrderContext.Provider
-      value={{
-        orders,
-        inventory,
-        wholesalers,
-        notifications,
-        nextOrderNumber,
-        createOrder,
-        updateOrder,
-        updateOrderStatus,
-        revertReadyStatus,
-        addResponse,
-        markShipped,
-        deleteOrder,
-        addInventoryItem,
-        updateInventoryItem,
-        deleteInventoryItem,
-        addWholesaler,
-        updateWholesaler,
-        deleteWholesaler,
-        setBackupConfig,
-        backupConfig,
-        setNextOrderNumberValue,
-        addNotification,
-      }}
+      value={contextValue}
     >
       {children}
     </OrderContext.Provider>

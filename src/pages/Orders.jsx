@@ -194,6 +194,9 @@ const Orders = () => {
       closeOrderForm();
     } catch (err) {
       console.error("Save order failed", err);
+      window.alert(
+        `Не удалось сохранить заказ: ${err?.message || "неизвестная ошибка"}. Проверьте интернет и обновите страницу.`,
+      );
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -267,7 +270,7 @@ const Orders = () => {
     e.target.value = "";
   };
 
-  const handleSendChat = () => {
+  const handleSendChat = async () => {
     if (!activeSelected) return;
     if (!chatMessage.trim() && !chatImage) return;
     const extra = {};
@@ -275,24 +278,42 @@ const Orders = () => {
       extra.image = chatImage;
       extra.type = chatMessage.trim() ? "message" : "photo";
     }
-    addResponse(
-      activeSelected.id,
-      chatMessage.trim() || "📷 Фото",
-      currentUser.id,
-      currentUser.name,
-      extra,
-    );
-    setChatMessage("");
-    setChatImage(null);
-    setChatImagePreview(null);
+    try {
+      await addResponse(
+        activeSelected.id,
+        chatMessage.trim() || "📷 Фото",
+        currentUser.id,
+        currentUser.name,
+        extra,
+      );
+      setChatMessage("");
+      setChatImage(null);
+      setChatImagePreview(null);
+    } catch (err) {
+      console.error("Send chat failed", err);
+      window.alert(
+        "Не удалось отправить сообщение. Проверьте подключение к интернету или права доступа.",
+      );
+    }
   };
 
-  const handleReaction = (reactionType) => {
+  const handleReaction = async (reactionType) => {
     if (!activeSelected) return;
     const label = reactionType === "progress" ? "💭 В процессе" : "✅ Готово";
-    addResponse(activeSelected.id, label, currentUser.id, currentUser.name, {
-      type: "reaction",
-    });
+    try {
+      await addResponse(
+        activeSelected.id,
+        label,
+        currentUser.id,
+        currentUser.name,
+        { type: "reaction" },
+      );
+    } catch (err) {
+      console.error("Reaction failed", err);
+      window.alert(
+        "Не удалось отправить отметку. Проверьте подключение или права доступа.",
+      );
+    }
   };
 
   const openReadyModal = () => {
