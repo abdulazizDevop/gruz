@@ -106,7 +106,15 @@ export const OrderProvider = ({ children }) => {
 
     unsubs.push(onSnapshot(collection(db, 'orders'), snap => {
       const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      // Sort by order code descending (newest at top). Fallback to createdAt
+      // only when codes are equal/missing, since createdAt-only sort drifted
+      // out of sync with code numbering after manual counter edits.
+      list.sort((a, b) => {
+        const ca = Number(a.code) || 0;
+        const cb = Number(b.code) || 0;
+        if (cb !== ca) return cb - ca;
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+      });
 
       const prev = prevOrderStatusRef.current;
       const next = new Map();

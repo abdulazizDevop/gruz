@@ -850,8 +850,7 @@ const Orders = () => {
                     </button>
                   )}
                   {(isSuperAdmin ||
-                    (isAdmin &&
-                      activeSelected.adminId === currentUser?.id)) && (
+                    activeSelected.adminId === currentUser?.id) && (
                     <button
                       onClick={async () => {
                         if (
@@ -901,10 +900,8 @@ const Orders = () => {
                     <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">
                       Статус
                     </h4>
-                    <div className={`grid ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 sm:gap-2`}>
-                      {["🚨 Срочное", "💭 В процессе", "✅ Сделано"]
-                        .filter((s) => !(s === "✅ Сделано" && !isAdmin))
-                        .map((s) => {
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                      {["🚨 Срочное", "💭 В процессе", "✅ Сделано"].map((s) => {
                           const isUrgentBtn = s.includes("🚨");
                           const disabled =
                             (!isAdmin && !isAssembler) ||
@@ -912,14 +909,25 @@ const Orders = () => {
                           return (
                             <button
                               key={s}
-                              onClick={() =>
+                              onClick={() => {
+                                if (activeSelected.status === s) {
+                                  if (s === "✅ Сделано") {
+                                    revertReadyStatus(activeSelected.id).catch(
+                                      (err) => {
+                                        console.error("Revert failed", err);
+                                        window.alert("Не удалось отменить");
+                                      },
+                                    );
+                                  }
+                                  return;
+                                }
                                 updateOrderStatus(
                                   activeSelected.id,
                                   s,
                                   currentUser.id,
                                   currentUser.name,
-                                )
-                              }
+                                );
+                              }}
                               disabled={disabled}
                               title={
                                 isUrgentBtn && !canSetUrgent
@@ -1201,7 +1209,8 @@ const Orders = () => {
                     </div>
                   </div>
 
-                  {activeSelected.status?.includes("✅") && isAdmin && (
+                  {activeSelected.status?.includes("✅") &&
+                    (isAssembler || isAdmin) && (
                       <button
                         onClick={async () => {
                           if (
