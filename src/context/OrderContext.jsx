@@ -207,11 +207,20 @@ export const OrderProvider = ({ children }) => {
     const id = Date.now().toString();
 
     const counterRef = doc(db, 'meta', 'counter');
+    // Never dispense a code <= an existing one — protects against the counter
+    // doc being stale, manually overridden in AdminManagement, or restored
+    // from an older backup. Always picks max(counter, highest known code + 1).
+    const maxKnownCode = orders.reduce(
+      (max, o) => Math.max(max, Number(o.code) || 0),
+      369,
+    );
+
     const orderCode = await runTransaction(db, async tx => {
       const snap = await tx.get(counterRef);
-      const current = snap.exists() ? snap.data().nextOrderNumber || 370 : 370;
-      tx.set(counterRef, { nextOrderNumber: current + 1 }, { merge: true });
-      return current;
+      const counterVal = snap.exists() ? snap.data().nextOrderNumber || 370 : 370;
+      const next = Math.max(counterVal, maxKnownCode + 1);
+      tx.set(counterRef, { nextOrderNumber: next + 1 }, { merge: true });
+      return next;
     });
 
     const newOrder = {

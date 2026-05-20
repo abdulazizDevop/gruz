@@ -901,9 +901,10 @@ const Orders = () => {
                     <h4 className="text-xs text-gray-500 font-medium mb-3 uppercase tracking-wider">
                       Статус
                     </h4>
-                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                      {["🚨 Срочное", "💭 В процессе", "✅ Сделано"].map(
-                        (s) => {
+                    <div className={`grid ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 sm:gap-2`}>
+                      {["🚨 Срочное", "💭 В процессе", "✅ Сделано"]
+                        .filter((s) => !(s === "✅ Сделано" && !isAdmin))
+                        .map((s) => {
                           const isUrgentBtn = s.includes("🚨");
                           const disabled =
                             (!isAdmin && !isAssembler) ||
@@ -1200,16 +1201,7 @@ const Orders = () => {
                     </div>
                   </div>
 
-                  {isAssembler && !activeSelected.status?.includes("✅") && (
-                    <button
-                      onClick={openReadyModal}
-                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <CheckCircle2 size={18} /> Отметить готовым
-                    </button>
-                  )}
-                  {activeSelected.status?.includes("✅") &&
-                    (isAssembler || isAdmin) && (
+                  {activeSelected.status?.includes("✅") && isAdmin && (
                       <button
                         onClick={async () => {
                           if (
