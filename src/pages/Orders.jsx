@@ -297,25 +297,6 @@ const Orders = () => {
     }
   };
 
-  const handleReaction = async (reactionType) => {
-    if (!activeSelected) return;
-    const label = reactionType === "progress" ? "💭 В процессе" : "✅ Готово";
-    try {
-      await addResponse(
-        activeSelected.id,
-        label,
-        currentUser.id,
-        currentUser.name,
-        { type: "reaction" },
-      );
-    } catch (err) {
-      console.error("Reaction failed", err);
-      window.alert(
-        "Не удалось отправить отметку. Проверьте подключение или права доступа.",
-      );
-    }
-  };
-
   const openReadyModal = () => {
     setReadyPhotoUrl("");
     setReadyComment("");
@@ -1078,21 +1059,6 @@ const Orders = () => {
                   <h4 className="text-xs text-gray-500 font-medium mb-3 flex items-center gap-1.5 uppercase tracking-wider">
                     <MessageSquare size={12} /> Комната ответа
                   </h4>
-
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => handleReaction("progress")}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl text-xs font-semibold text-blue-400 transition-colors"
-                    >
-                      <Clock size={14} /> В процессе
-                    </button>
-                    <button
-                      onClick={() => handleReaction("done")}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-xs font-semibold text-emerald-400 transition-colors"
-                    >
-                      <CheckCircle2 size={14} /> Готово
-                    </button>
-                  </div>
 
                   <div className="flex-1 bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 flex flex-col gap-3 min-h-[300px]">
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1">
