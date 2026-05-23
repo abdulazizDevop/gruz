@@ -306,6 +306,13 @@ export const OrderProvider = ({ children }) => {
     });
   };
 
+  const removeResponse = async (orderId, timestamp) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const nextRoom = (order.responseRoom || []).filter(r => r.timestamp !== timestamp);
+    await updateDoc(doc(db, 'orders', orderId), { responseRoom: nextRoom });
+  };
+
   const markShipped = async (orderId) => {
     const orderToShip = orders.find(o => o.id === orderId);
     if (orderToShip) {
@@ -411,6 +418,7 @@ export const OrderProvider = ({ children }) => {
     updateOrderStatus,
     revertReadyStatus,
     addResponse,
+    removeResponse,
     markShipped,
     deleteOrder,
     addInventoryItem,

@@ -51,8 +51,9 @@ const Dashboard = () => {
   const { orders, inventory, wholesalers } = useOrders();
   const { currentUser, users } = useAuth();
   const isSuperAdmin = currentUser?.role === "superadmin";
+  const isAdmin = currentUser?.role === "admin" || isSuperAdmin;
   const isAssembler = isProductionRole(currentUser?.role);
-  const salesHistory = useSales(isSuperAdmin);
+  const salesHistory = useSales(isAdmin);
   const canSeeClient = hasPermission(currentUser, "client_info");
 
   const handleManualBackup = () => {
@@ -119,7 +120,7 @@ const Dashboard = () => {
     .filter((u) => u.role === "superadmin")
     .map((u) => u.id);
   const visibleOrders =
-    isSuperAdmin || isAssembler
+    isSuperAdmin || isAdmin || isAssembler
       ? orders
       : orders.filter(
           (o) =>
@@ -129,7 +130,7 @@ const Dashboard = () => {
     (acc, o) => acc + (o.price || o.total || 0),
     0,
   );
-  const historySalesTotal = isSuperAdmin
+  const historySalesTotal = isAdmin
     ? salesHistory.reduce((acc, s) => acc + (s.total || s.price || 0), 0)
     : 0;
   const totalSales = activeSalesTotal + historySalesTotal;

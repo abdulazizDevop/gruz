@@ -79,6 +79,7 @@ const Orders = () => {
     updateOrderStatus,
     revertReadyStatus,
     addResponse,
+    removeResponse,
     markShipped,
     deleteOrder,
     nextOrderNumber,
@@ -118,7 +119,7 @@ const Orders = () => {
     .filter((u) => u.role === "superadmin")
     .map((u) => u.id);
   const visibleOrders =
-    isSuperAdmin || isAssembler
+    isSuperAdmin || isAdmin || isAssembler
       ? orders
       : orders.filter(
           (o) =>
@@ -294,6 +295,34 @@ const Orders = () => {
       window.alert(
         "Не удалось отправить сообщение. Проверьте подключение к интернету или права доступа.",
       );
+    }
+  };
+
+  const handleReaction = async (reactionType) => {
+    if (!activeSelected) return;
+    const label = reactionType === "progress" ? "💭 В процессе" : "✅ Готово";
+    try {
+      await addResponse(
+        activeSelected.id,
+        label,
+        currentUser.id,
+        currentUser.name,
+        { type: "reaction" },
+      );
+    } catch (err) {
+      console.error("Reaction failed", err);
+      window.alert("Не удалось отправить отметку.");
+    }
+  };
+
+  const handleRemoveReaction = async (resp) => {
+    if (!activeSelected) return;
+    if (resp.userId !== currentUser?.id) return;
+    try {
+      await removeResponse(activeSelected.id, resp.timestamp);
+    } catch (err) {
+      console.error("Remove reaction failed", err);
+      window.alert("Не удалось удалить отметку.");
     }
   };
 
@@ -1060,6 +1089,21 @@ const Orders = () => {
                     <MessageSquare size={12} /> Комната ответа
                   </h4>
 
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => handleReaction("progress")}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl text-xs font-semibold text-blue-400 transition-colors"
+                    >
+                      <Clock size={14} /> В процессе
+                    </button>
+                    <button
+                      onClick={() => handleReaction("done")}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-xs font-semibold text-emerald-400 transition-colors"
+                    >
+                      <CheckCircle2 size={14} /> Готово
+                    </button>
+                  </div>
+
                   <div className="flex-1 bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 flex flex-col gap-3 min-h-[300px]">
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                       {activeSelected.responseRoom?.map((resp, i) => (
@@ -1068,20 +1112,29 @@ const Orders = () => {
                           className={`flex flex-col ${resp.userId === currentUser.id ? "items-end" : "items-start"}`}
                         >
                           {resp.type === "reaction" ? (
-                            <div
-                              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-                                resp.message.includes("✅")
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15"
-                                  : "bg-blue-500/10 text-blue-400 border border-blue-500/15"
-                              }`}
-                            >
-                              {resp.message.includes("✅") ? (
-                                <CheckCircle2 size={13} />
-                              ) : (
-                                <Clock size={13} />
-                              )}
-                              <span>{resp.userName}</span> — {resp.message}
-                            </div>
+                            (() => {
+                              const isOwn = resp.userId === currentUser?.id;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={isOwn ? () => handleRemoveReaction(resp) : undefined}
+                                  disabled={!isOwn}
+                                  title={isOwn ? "Нажмите, чтобы удалить" : undefined}
+                                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+                                    resp.message.includes("✅")
+                                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15"
+                                      : "bg-blue-500/10 text-blue-400 border border-blue-500/15"
+                                  } ${isOwn ? "hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300 cursor-pointer" : "cursor-default"}`}
+                                >
+                                  {resp.message.includes("✅") ? (
+                                    <CheckCircle2 size={13} />
+                                  ) : (
+                                    <Clock size={13} />
+                                  )}
+                                  <span>{resp.userName}</span> — {resp.message}
+                                </button>
+                              );
+                            })()
                           ) : (
                             <div
                               className={`max-w-[85%] p-3 rounded-xl ${

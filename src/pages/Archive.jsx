@@ -57,10 +57,11 @@ const Archive = () => {
   const [toDate, setToDate] = useState("");
 
   const isSuperAdmin = currentUser?.role === "superadmin";
+  const isAdmin = currentUser?.role === "admin" || isSuperAdmin;
 
   const visible = useMemo(() => {
     let list = salesHistory;
-    if (!isSuperAdmin) {
+    if (!isAdmin) {
       list = list.filter((s) => !s.adminId || s.adminId === currentUser?.id);
     }
     if (fromDate) {
@@ -82,7 +83,7 @@ const Archive = () => {
       );
     }
     return list;
-  }, [salesHistory, searchTerm, fromDate, toDate, currentUser, isSuperAdmin]);
+  }, [salesHistory, searchTerm, fromDate, toDate, currentUser, isAdmin]);
 
   const stats = useMemo(() => {
     const list = [
