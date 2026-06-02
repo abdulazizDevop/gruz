@@ -275,7 +275,7 @@ const Archive = () => {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate group-hover:text-[#e8de8c] transition-colors">
-                      {canSeeClient ? getClientName(s) : "•••"}
+                      {getClientName(s)}
                     </h3>
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                       <Truck size={10} />
@@ -368,7 +368,7 @@ const Archive = () => {
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-lg font-bold truncate">
-                      {canSeeClient ? getClientName(selected) : "•••"}
+                      {getClientName(selected)}
                     </h2>
                     <p className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                       {selected.createdAt && (

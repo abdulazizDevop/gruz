@@ -88,7 +88,7 @@ const ReservedWarehouse = () => {
                   <div>
                     <p className={`text-xs font-medium mb-0.5 ${isUrgentOrder ? 'text-white' : 'text-[#e8de8c]'}`}>#{order.code}</p>
                     <h3 className={`text-lg font-bold ${isUrgentOrder ? 'text-white' : ''}`}>
-                      {canSeeClient ? (order.client?.name || 'Без имени') : `Заказ #${order.code}`}
+                      {order.client?.name || `Заказ #${order.code}`}
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-xs flex items-center gap-1 ${isUrgentOrder ? 'text-red-100' : 'text-gray-500'}`}>

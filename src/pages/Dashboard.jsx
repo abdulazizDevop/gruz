@@ -270,9 +270,7 @@ const Dashboard = () => {
                         <p
                           className={`text-sm font-medium ${isUrgentOrder ? "text-white" : ""}`}
                         >
-                          {canSeeClient
-                            ? order.client?.name || "Без имени"
-                            : "•••"}
+                          {order.client?.name || "Без имени"}
                         </p>
                         <p
                           className={`text-xs ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}

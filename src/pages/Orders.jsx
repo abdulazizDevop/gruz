@@ -590,9 +590,7 @@ const Orders = () => {
                             : "group-hover:text-[#e8de8c]"
                         }`}
                       >
-                        {canSeeClient
-                          ? order.client?.name || "Без имени"
-                          : `Заказ #${order.code}`}
+                        {order.client?.name || `Заказ #${order.code}`}
                       </h3>
                       <div
                         className={`flex items-center gap-1.5 text-xs mt-0.5 ${
@@ -837,9 +835,8 @@ const Orders = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="text-sm sm:text-lg font-bold truncate">
-                      {canSeeClient
-                        ? activeSelected.client?.name || "Без имени"
-                        : `Заказ #${activeSelected.code}`}
+                      {activeSelected.client?.name ||
+                        `Заказ #${activeSelected.code}`}
                     </h2>
                     <p className="text-[10px] sm:text-xs text-gray-500 truncate hidden sm:block">
                       Создал: {activeSelected.adminName} •{" "}
