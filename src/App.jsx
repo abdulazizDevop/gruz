@@ -206,7 +206,7 @@ const Layout = ({ children }) => {
           <SidebarItem
             to="/reserved"
             icon={PackageCheck}
-            label="Заказной склад"
+            label="Оптовый склад"
             active={location.pathname === "/reserved"}
             collapsed={collapsed}
           />

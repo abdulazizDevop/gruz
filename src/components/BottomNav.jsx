@@ -8,7 +8,7 @@ import { hasPermission } from '../lib/permissions';
 const ALL_ITEMS = [
   { key: 'dashboard', to: '/', label: 'Главная', icon: LayoutDashboard },
   { key: 'orders', to: '/orders', label: 'Заказы', icon: ShoppingCart },
-  { key: 'reserved', to: '/reserved', label: 'Готовые', icon: PackageCheck },
+  { key: 'reserved', to: '/reserved', label: 'Опт. склад', icon: PackageCheck },
   { key: 'warehouse', to: '/warehouse', label: 'Склад', icon: Warehouse },
   { key: 'wholesalers', to: '/wholesalers', label: 'Оптовики', icon: Users },
   { key: 'archive', to: '/archive', label: 'Архив', icon: Archive },

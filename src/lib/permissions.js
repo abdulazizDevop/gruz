@@ -3,7 +3,7 @@ export const SECTIONS = [
   { key: 'orders', label: 'Заказы' },
   { key: 'wholesalers', label: 'Оптовики' },
   { key: 'warehouse', label: 'Склад' },
-  { key: 'reserved', label: 'Заказной склад' },
+  { key: 'reserved', label: 'Оптовый склад' },
   { key: 'archive', label: 'Архив' },
 ];
 
