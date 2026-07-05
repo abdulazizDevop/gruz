@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +19,7 @@ const statusBadgeClass = (status) => {
 const Wholesalers = () => {
   const { wholesalers, addWholesaler, updateWholesaler, deleteWholesaler, orders } = useOrders();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const canManage = hasPermission(currentUser, 'manage_wholesalers');
   const canSeeClient = hasPermission(currentUser, 'client_info');
 
@@ -247,7 +249,13 @@ const Wholesalers = () => {
                   </div>
                 )}
                 {viewingOrders.map(o => (
-                  <div key={o.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
+                  <div
+                    key={o.id}
+                    onClick={() => {
+                      setViewingWholesaler(null);
+                      navigate(`/orders?open=${o.id}`);
+                    }}
+                    className="cursor-pointer bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-[#e8de8c]/30 hover:bg-white/[0.05] transition-colors">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 bg-[#e8de8c]/10 rounded-lg flex items-center justify-center text-[#e8de8c] font-bold text-sm shrink-0">

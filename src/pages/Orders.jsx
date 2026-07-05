@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOrders } from "../context/OrderContext";
 import { useAuth } from "../context/AuthContext";
@@ -90,6 +91,21 @@ const Orders = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep-link support: /orders?open=<id> opens the detail modal for that
+  // order. Used by the wholesaler drill-down and any external link.
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId) return;
+    const found = orders.find((o) => o.id === openId);
+    if (found) {
+      setSelectedOrder(found);
+      searchParams.delete("open");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [orders, searchParams, setSearchParams]);
+
   const [chatMessage, setChatMessage] = useState("");
   const [chatImage, setChatImage] = useState(null);
   const [chatImagePreview, setChatImagePreview] = useState(null);
@@ -126,7 +142,12 @@ const Orders = () => {
             o.adminId === currentUser?.id || superadminIds.includes(o.adminId),
         );
 
-  const filteredOrders = visibleOrders.filter((o) => {
+  // Once an order is marked ✅ Сделано it moves to Заказной склад and
+  // disappears from the Заказы list — per client's workflow ask.
+  const activeOrders = visibleOrders.filter(
+    (o) => !o.status?.includes("✅"),
+  );
+  const filteredOrders = activeOrders.filter((o) => {
     const q = searchTerm.toLowerCase();
     return (
       String(o.code || "").includes(searchTerm) ||
@@ -247,15 +268,22 @@ const Orders = () => {
 
   const handleOrderPhoto = async (e) => {
     const files = Array.from(e.target.files);
+    const failed = [];
     for (const file of files) {
       try {
         const url = await uploadImage(file);
         setNewOrder((prev) => ({ ...prev, photos: [...prev.photos, url] }));
       } catch (err) {
         console.error("Upload failed", err);
+        failed.push(file.name);
       }
     }
     e.target.value = "";
+    if (failed.length > 0) {
+      window.alert(
+        `Не удалось загрузить фото: ${failed.join(", ")}. Проверьте интернет.`,
+      );
+    }
   };
 
   const handleChatImageSelect = async (e) => {
@@ -267,6 +295,9 @@ const Orders = () => {
       setChatImagePreview(url);
     } catch (err) {
       console.error("Upload failed", err);
+      window.alert(
+        "Не удалось загрузить фото. Проверьте интернет и попробуйте снова.",
+      );
     }
     e.target.value = "";
   };
@@ -550,18 +581,17 @@ const Orders = () => {
 
       {/* Orders grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence>
           {filteredOrders.map((order, idx) => {
             const isUrgentOrder =
               order.isUrgent || order.status?.includes("🚨");
             return (
               <motion.div
-                layout
                 key={order.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: idx * 0.03 }}
+                transition={{ delay: Math.min(idx * 0.02, 0.15), duration: 0.2 }}
                 onClick={() => setSelectedOrder(order)}
                 className={`rounded-2xl p-5 cursor-pointer group transition-all ${
                   isUrgentOrder

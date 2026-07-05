@@ -33,7 +33,7 @@ const ReservedWarehouse = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
-            Оптовый склад
+            Заказной склад
             <span className="px-2.5 py-0.5 bg-[#e8de8c]/10 text-[#e8de8c] text-sm font-semibold rounded-lg">{reservedOrders.length}</span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">Готовые к выдаче клиенту</p>
