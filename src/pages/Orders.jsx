@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOrders } from "../context/OrderContext";
 import { useAuth } from "../context/AuthContext";
@@ -92,6 +92,21 @@ const Orders = () => {
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // If the user came from the Wholesalers drill-down, closing the modal
+  // sends them back to /wholesalers and reopens the wholesaler card so
+  // they stay inside that section instead of getting dumped onto /orders.
+  const closeOrderDetail = useCallback(() => {
+    setSelectedOrder(null);
+    const fromWholesaler = location.state?.fromWholesaler;
+    if (fromWholesaler) {
+      navigate("/wholesalers", {
+        state: { openWholesaler: fromWholesaler },
+      });
+    }
+  }, [location.state, navigate]);
 
   // Deep-link support: /orders?open=<id> opens the detail modal for that
   // order. Used by the wholesaler drill-down and any external link.
@@ -836,7 +851,7 @@ const Orders = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedOrder(null)}
+              onClick={closeOrderDetail}
               className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             />
             <motion.div
@@ -851,7 +866,7 @@ const Orders = () => {
               >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <button
-                    onClick={() => setSelectedOrder(null)}
+                    onClick={closeOrderDetail}
                     className="flex items-center gap-1.5 px-2 py-2 -ml-1 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-colors shrink-0"
                     title="Назад"
                   >
@@ -898,7 +913,7 @@ const Orders = () => {
                           return;
                         try {
                           await deleteOrder(activeSelected.id);
-                          setSelectedOrder(null);
+                          closeOrderDetail();
                         } catch (err) {
                           console.error("Delete order failed", err);
                           window.alert("Не удалось удалить заказ");
@@ -918,7 +933,7 @@ const Orders = () => {
                     <Printer size={18} />
                   </button>
                   <button
-                    onClick={() => setSelectedOrder(null)}
+                    onClick={closeOrderDetail}
                     className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hidden sm:flex"
                     title="Закрыть"
                   >
@@ -1281,7 +1296,7 @@ const Orders = () => {
                     <button
                       onClick={() => {
                         markShipped(activeSelected.id);
-                        setSelectedOrder(null);
+                        closeOrderDetail();
                       }}
                       className="mt-3 w-full bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                     >

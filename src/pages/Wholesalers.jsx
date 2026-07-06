@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,7 @@ const Wholesalers = () => {
   const { wholesalers, addWholesaler, updateWholesaler, deleteWholesaler, orders } = useOrders();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const canManage = hasPermission(currentUser, 'manage_wholesalers');
   const canSeeClient = hasPermission(currentUser, 'client_info');
 
@@ -31,6 +32,19 @@ const Wholesalers = () => {
   const [saving, setSaving] = useState(false);
 
   const [viewingWholesaler, setViewingWholesaler] = useState(null);
+
+  // Reopen the wholesaler card when Orders sends us back with state — this
+  // keeps the user "inside" the Оптовики section instead of dumping them
+  // onto /orders after they close the order detail modal.
+  useEffect(() => {
+    const returnToId = location.state?.openWholesaler;
+    if (!returnToId) return;
+    const w = wholesalers.find((x) => x.id === returnToId);
+    if (w) {
+      setViewingWholesaler(w);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [wholesalers, location.state, location.pathname, navigate]);
 
   const filteredWholesalers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -252,8 +266,11 @@ const Wholesalers = () => {
                   <div
                     key={o.id}
                     onClick={() => {
+                      const wid = viewingWholesaler?.id;
                       setViewingWholesaler(null);
-                      navigate(`/orders?open=${o.id}`);
+                      navigate(`/orders?open=${o.id}`, {
+                        state: { fromWholesaler: wid },
+                      });
                     }}
                     className="cursor-pointer bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-[#e8de8c]/30 hover:bg-white/[0.05] transition-colors">
                     <div className="flex items-start justify-between gap-3 mb-2">
