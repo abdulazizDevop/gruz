@@ -1,6 +1,6 @@
 {
   "name": "doorman-uploads",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "private": true,
   "main": "server.js",
@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "firebase-admin": "^12.7.0",
     "multer": "^1.4.5-lts.1",
     "nanoid": "^5.0.9"
   }

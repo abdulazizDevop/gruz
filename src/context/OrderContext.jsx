@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
-import { showBrowserNotification } from '../lib/notifications';
+import { showBrowserNotification, notifyOrderEvent } from '../lib/notifications';
 
 const OrderContext = createContext();
 
@@ -272,6 +272,17 @@ export const OrderProvider = ({ children }) => {
       patch.readyAt = null;
     }
     await updateDoc(doc(db, 'orders', orderId), patch);
+
+    // Ready: fan out a push to the order's admin + superadmins. Fire and
+    // forget — the in-app Firestore-listener notification still fires for
+    // anyone with the app open regardless.
+    if (newStatus === '✅ Сделано') {
+      notifyOrderEvent({
+        orderId,
+        event: 'ready',
+        actorName: userName || currentUserRef.current?.name || '',
+      });
+    }
   };
 
   const revertReadyStatus = async (orderId) => {
@@ -363,6 +374,12 @@ export const OrderProvider = ({ children }) => {
       await setDoc(doc(db, 'sales', orderToShip.id), saleRecord);
     }
     await deleteDoc(doc(db, 'orders', orderId));
+
+    notifyOrderEvent({
+      orderId,
+      event: 'shipped',
+      actorName: currentUserRef.current?.name || '',
+    });
   };
 
   const deleteOrder = async (orderId) => {

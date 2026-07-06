@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { DEFAULT_DYNAMIC_LABELS } from '../lib/roles';
+import { registerFcmToken } from '../lib/notifications';
 
 const AuthContext = createContext();
 
@@ -85,6 +86,12 @@ export const AuthProvider = ({ children }) => {
       if (fresh && (fresh.name !== currentUser.name || fresh.password !== currentUser.password || fresh.role !== currentUser.role)) {
         setCurrentUser(fresh);
       }
+      // Register this device's FCM token against the logged-in user so the
+      // backend can reach them with push. Safe to run repeatedly — no-op
+      // when the token hasn't changed.
+      registerFcmToken(currentUser.id).catch((err) =>
+        console.warn('[auth] fcm register failed:', err),
+      );
     } else {
       localStorage.removeItem('doorman_currentUser');
     }

@@ -25,3 +25,7 @@ dist-ssr
 
 # local icon regeneration source (used by scripts/make-icon.js)
 logo-source.png
+
+# Secrets — Firebase service account (base64) for push notifications
+.env
+*firebase-adminsdk*.json

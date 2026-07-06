@@ -5,6 +5,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
+import { getMessaging, isSupported as messagingIsSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBaVT1wtUr30hf_kWzM99uX2o7iNyW0Nco',
@@ -31,3 +32,22 @@ try {
 }
 
 export { db };
+
+// FCM: some contexts (Safari older than 16.4, private tabs, iOS < 16.4)
+// don't support Web Push. We resolve messaging lazily so importing this
+// file never throws in unsupported environments.
+let _messagingPromise = null;
+export const getMessagingIfSupported = async () => {
+  if (_messagingPromise) return _messagingPromise;
+  _messagingPromise = (async () => {
+    try {
+      const ok = await messagingIsSupported();
+      if (!ok) return null;
+      return getMessaging(app);
+    } catch (err) {
+      console.warn('[firebase] messaging init failed:', err);
+      return null;
+    }
+  })();
+  return _messagingPromise;
+};
