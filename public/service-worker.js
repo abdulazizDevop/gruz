@@ -1,5 +1,45 @@
-const CACHE_NAME = 'doorman-v7';
+const CACHE_NAME = 'doorman-v8';
 const APP_SHELL = ['/favicon.svg', '/doorman-logo.png', '/manifest.json'];
+
+// Firebase Cloud Messaging — background push handler. Loaded via importScripts
+// because CDN modules aren't allowed in a classic SW. Kept in THIS file (not a
+// separate firebase-messaging-sw.js) so we only have one SW at the origin
+// scope — registering two SWs there causes them to churn each other and
+// trigger an infinite controllerchange→reload loop.
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
+  if (!self.firebase.apps.length) {
+    self.firebase.initializeApp({
+      apiKey: 'AIzaSyBaVT1wtUr30hf_kWzM99uX2o7iNyW0Nco',
+      authDomain: 'gruz-azhab.firebaseapp.com',
+      projectId: 'gruz-azhab',
+      storageBucket: 'gruz-azhab.firebasestorage.app',
+      messagingSenderId: '417648175698',
+      appId: '1:417648175698:web:f5683ecce50c2c6ec90d8b',
+    });
+  }
+  const _fcmMessaging = self.firebase.messaging();
+  _fcmMessaging.onBackgroundMessage((payload) => {
+    const title = payload.notification?.title || 'DoorMan';
+    const body = payload.notification?.body || '';
+    const tag = payload.data?.event
+      ? `order-${payload.data.event}-${payload.data.orderId || ''}`
+      : 'doorman-push';
+    self.registration.showNotification(title, {
+      body,
+      icon: '/doorman-logo.png',
+      badge: '/doorman-logo.png',
+      vibrate: [100, 50, 100],
+      tag,
+      data: payload.data || {},
+    });
+  });
+} catch (err) {
+  // FCM optional — if the CDN can't be reached, the app still works, just
+  // without background push. Foreground notifications keep going.
+  console.warn('[sw] FCM setup failed:', err);
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

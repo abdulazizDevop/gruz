@@ -13,6 +13,21 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
+    // Guard against a controllerchange loop caused by anything registering a
+    // competing SW at the origin scope — we've been bitten by this once when
+    // an FCM SW briefly co-existed with the app SW. sessionStorage survives
+    // the reload, so a second controllerchange within the same tab session
+    // is a strong signal something is churning and we should stop reloading.
+    try {
+      if (sessionStorage.getItem('doorman_sw_reloaded') === '1') {
+        console.warn('[sw] skipping reload — controllerchange fired again');
+        return;
+      }
+      sessionStorage.setItem('doorman_sw_reloaded', '1');
+    } catch {
+      // sessionStorage may be unavailable (private mode) — fall through and
+      // let the in-memory `refreshing` flag handle single-fire per page load.
+    }
     refreshing = true;
     window.location.reload();
   });
@@ -33,5 +48,21 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         });
       })
       .catch((err) => console.warn('SW registration failed', err));
+
+    // Best-effort cleanup: if a browser previously installed the standalone
+    // /firebase-messaging-sw.js, unregister it explicitly. The stub file we
+    // ship now self-unregisters on activate, but this covers the case where
+    // the browser never fetches the updated stub because it's cached.
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => {
+        for (const r of regs) {
+          const url = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || '';
+          if (url.endsWith('/firebase-messaging-sw.js')) {
+            r.unregister().catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
   });
 }

@@ -71,17 +71,16 @@ export const registerFcmToken = async (userId) => {
   if (!messaging) return null;
 
   try {
-    let swReg = null;
+    // Reuse the app's existing service worker instead of registering a
+    // separate firebase-messaging-sw.js — two SWs at the same origin scope
+    // race each other and cause an infinite controllerchange→reload loop.
+    // FCM background handling lives inside /service-worker.js now.
+    let swReg;
     if ('serviceWorker' in navigator) {
-      // Ensure the FCM SW is registered before requesting a token — this file
-      // lives at /firebase-messaging-sw.js in public/. Firebase auto-registers
-      // it on first getToken() call, but doing it explicitly is safer here.
       try {
-        swReg = await navigator.serviceWorker.register(
-          '/firebase-messaging-sw.js',
-        );
+        swReg = await navigator.serviceWorker.ready;
       } catch (err) {
-        console.warn('[fcm] failed to register messaging SW:', err);
+        console.warn('[fcm] no ready SW:', err);
       }
     }
 
