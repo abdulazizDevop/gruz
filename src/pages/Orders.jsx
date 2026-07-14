@@ -125,6 +125,17 @@ const Orders = () => {
   const [chatImage, setChatImage] = useState(null);
   const [chatImagePreview, setChatImagePreview] = useState(null);
   const [viewImage, setViewImage] = useState(null);
+
+  // When the user switches to a different order (or closes the modal), drop
+  // any half-typed chat text and any uploaded-but-not-sent photo. Otherwise
+  // a photo attached in order #305 that's never actually sent stays in
+  // component state, and when the user opens #306 the preview follows into
+  // that chat and gets attached to #306 on the next send — reported bug.
+  useEffect(() => {
+    setChatMessage("");
+    setChatImage(null);
+    setChatImagePreview(null);
+  }, [selectedOrder?.id]);
   const chatFileRef = useRef(null);
   const orderPhotoRef = useRef(null);
   const submittingRef = useRef(false);
