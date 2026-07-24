@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ const formatMoney = (v) => Number(v || 0).toLocaleString('ru-RU');
 const ReservedWarehouse = () => {
   const { orders, markShipped } = useOrders();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const canSeeClient = hasPermission(currentUser, 'client_info');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -71,7 +73,12 @@ const ReservedWarehouse = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: Math.min(idx * 0.05, 0.3) }}
-              className={`rounded-2xl p-6 transition-all group ${
+              onClick={() =>
+                navigate(`/orders?open=${order.id}`, {
+                  state: { fromReserved: true },
+                })
+              }
+              className={`rounded-2xl p-6 transition-all group cursor-pointer ${
                 isUrgentOrder
                   ? 'bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60'
                   : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30'
@@ -121,7 +128,10 @@ const ReservedWarehouse = () => {
                 </div>
 
                 <button
-                  onClick={() => markShipped(order.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    markShipped(order.id);
+                  }}
                   className="w-full lg:w-auto px-6 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] text-black font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shrink-0"
                 >
                   Отгрузить <ArrowRight size={16} />

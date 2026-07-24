@@ -183,7 +183,6 @@ const Dashboard = () => {
           title="Всего активных заказов"
           value={visibleOrders.length}
           icon={ShoppingCart}
-          trend={12}
           delay={0.05}
         />
         {canSeeClient && (
@@ -191,7 +190,6 @@ const Dashboard = () => {
             title="Общая сумма продаж"
             value={`${totalSales.toLocaleString()} ₽`}
             icon={TrendingUp}
-            trend={8}
             delay={0.1}
           />
         )}
@@ -199,14 +197,12 @@ const Dashboard = () => {
           title="Дверей на складе (шт.)"
           value={inventory.reduce((acc, i) => acc + (i.qty || 0), 0)}
           icon={Package}
-          trend={-2}
           delay={0.15}
         />
         <StatCard
           title="База оптовиков"
           value={wholesalers.length}
           icon={Users}
-          trend={5}
           delay={0.2}
         />
       </div>
@@ -378,15 +374,6 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <div className="mt-6 bg-[#e8de8c]/5 border border-[#e8de8c]/10 rounded-xl p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#e8de8c]/10 rounded-xl flex items-center justify-center text-[#e8de8c] shrink-0">
-              <CheckCircle2 size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Эффективность +14%</p>
-              <p className="text-xs text-gray-500">К прошлой неделе</p>
-            </div>
-          </div>
         </motion.div>
       </div>
     </div>

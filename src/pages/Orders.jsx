@@ -100,11 +100,13 @@ const Orders = () => {
   // they stay inside that section instead of getting dumped onto /orders.
   const closeOrderDetail = useCallback(() => {
     setSelectedOrder(null);
-    const fromWholesaler = location.state?.fromWholesaler;
-    if (fromWholesaler) {
+    const state = location.state;
+    if (state?.fromWholesaler) {
       navigate("/wholesalers", {
-        state: { openWholesaler: fromWholesaler },
+        state: { openWholesaler: state.fromWholesaler },
       });
+    } else if (state?.fromReserved) {
+      navigate("/reserved");
     }
   }, [location.state, navigate]);
 
@@ -1213,7 +1215,10 @@ const Orders = () => {
                             </div>
                           )}
                           <span className="text-[10px] text-gray-600 mt-0.5 px-1">
-                            {new Date(resp.timestamp).toLocaleTimeString([], {
+                            {new Date(resp.timestamp).toLocaleString("ru-RU", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
