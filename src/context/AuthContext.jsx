@@ -64,15 +64,30 @@ export const AuthProvider = ({ children }) => {
     seedUsersIfEmpty().catch(err => console.error('Seed users failed', err));
     seedRolesIfEmpty().catch(err => console.error('Seed roles failed', err));
 
-    const unsubUsers = onSnapshot(collection(db, 'users'), snap => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      setUsers(list);
-      setLoaded(true);
-    });
-    const unsubRoles = onSnapshot(collection(db, 'roles'), snap => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      setRoles(list);
-    });
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      snap => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        setUsers(list);
+        setLoaded(true);
+      },
+      err => {
+        // Never leave the Login page wedged on "Загрузка базы данных…"
+        // just because Firestore hiccuped. Flip loaded so the form is at
+        // least submittable — login() will fall back to whatever `users`
+        // state we have (possibly stale from persistent cache).
+        console.warn('[auth] users onSnapshot error:', err);
+        setLoaded(true);
+      },
+    );
+    const unsubRoles = onSnapshot(
+      collection(db, 'roles'),
+      snap => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        setRoles(list);
+      },
+      err => console.warn('[auth] roles onSnapshot error:', err),
+    );
     return () => {
       unsubUsers();
       unsubRoles();
@@ -98,8 +113,14 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser, users]);
 
   const login = (name, password) => {
+    // Null-safe compare: a single doc in `users` with a missing `name` or
+    // `password` (partial write, hand-created doc, half-finished admin
+    // edit) used to make `u.name.toLowerCase()` throw for every user whose
+    // doc sits after it in the array — which is why Asxab (id="1", found
+    // first) could log in but later-registered workers couldn't.
+    const target = (name || '').toLowerCase();
     const user = users.find(
-      u => u.name.toLowerCase() === name.toLowerCase() && u.password === password
+      u => (u?.name ?? '').toLowerCase() === target && (u?.password ?? '') === password,
     );
     if (user) {
       setCurrentUser(user);

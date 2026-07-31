@@ -37,20 +37,29 @@ const Login = () => {
     setError('');
 
     setTimeout(async () => {
-      if (login(name.trim(), password)) {
-        requestNotificationPermission();
-        const fresh = users.find(
-          u => u.name.toLowerCase() === name.trim().toLowerCase() && u.password === password
-        );
-        const target = firstAllowedPath(fresh);
-        if (target === '/login') {
-          setError('У этого сотрудника нет доступных разделов. Обратитесь к администратору.');
+      try {
+        if (login(name.trim(), password)) {
+          requestNotificationPermission();
+          const target = (name.trim() || '').toLowerCase();
+          const fresh = users.find(
+            u => (u?.name ?? '').toLowerCase() === target && (u?.password ?? '') === password,
+          );
+          const path = firstAllowedPath(fresh);
+          if (path === '/login') {
+            setError('У этого сотрудника нет доступных разделов. Обратитесь к администратору.');
+            setIsLoading(false);
+            return;
+          }
+          navigate(path, { replace: true });
+        } else {
+          setError('Неверное имя пользователя или пароль');
           setIsLoading(false);
-          return;
         }
-        navigate(target, { replace: true });
-      } else {
-        setError('Неверное имя пользователя или пароль');
+      } catch (err) {
+        // Any unexpected throw here used to leave the spinner spinning
+        // forever with no user-visible message. Now surface it.
+        console.error('[login] unexpected error:', err);
+        setError('Не удалось войти. Попробуйте ещё раз.');
         setIsLoading(false);
       }
     }, 400);

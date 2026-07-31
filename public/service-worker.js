@@ -1,5 +1,14 @@
-const CACHE_NAME = 'doorman-v8';
-const APP_SHELL = ['/favicon.svg', '/doorman-logo.png', '/manifest.json'];
+const CACHE_NAME = 'doorman-v9';
+// Pre-cache /index.html too so the navigate-fallback branch below has
+// something to fall back to when the server briefly can't respond. Missing
+// this was making the app dead-lock on a blank page during redeploys.
+const APP_SHELL = ['/', '/index.html', '/favicon.svg', '/doorman-logo.png', '/manifest.json'];
+
+// Content-types we're willing to cache under an /assets/ URL. Anything else
+// (most importantly text/html from Caddy's try_files fallback for stale
+// asset hashes) gets rejected so we don't poison the cache with HTML that
+// then fails to parse as JS forever.
+const ASSET_CONTENT_TYPES = /^(?:application\/javascript|application\/json|text\/css|font\/|image\/|application\/octet-stream)/i;
 
 // Firebase Cloud Messaging — background push handler. Loaded via importScripts
 // because CDN modules aren't allowed in a classic SW. Kept in THIS file (not a
@@ -43,15 +52,32 @@ try {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) =>
+      // addAll rejects if ANY entry fails, which then leaves the SW
+      // stuck at "installing" and navigator.serviceWorker.ready never
+      // resolves. Add each URL individually and swallow per-URL failures.
+      Promise.all(APP_SHELL.map((url) => cache.add(url).catch(() => {})))
+    ).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys().then((keys) => Promise.all([
+      // Drop old versions of the cache entirely.
+      ...keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+      // Also purge any /assets/ entries in the CURRENT cache that a prior
+      // SW version might have poisoned with HTML from Caddy's try_files
+      // fallback. This unwedges clients who cached HTML under a .js URL.
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.keys().then((reqs) =>
+          Promise.all(
+            reqs.filter((r) => new URL(r.url).pathname.startsWith('/assets/'))
+              .map((r) => cache.delete(r)),
+          ),
+        ),
+      ),
+    ])).then(() => self.clients.claim())
   );
 });
 
@@ -88,10 +114,19 @@ self.addEventListener('fetch', (event) => {
       caches.match(req).then((cached) => {
         if (cached) return cached;
         return fetch(req).then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          if (!res || res.status !== 200) return res;
+          // Guard against Caddy's SPA fallback returning HTML for a hashed
+          // asset that no longer exists on disk (client is running stale
+          // index.html referring to purged chunks). Caching that HTML under
+          // a .js URL causes an infinite "Загрузка базы данных" spinner
+          // on every subsequent reload — client can't recover without
+          // manually clearing site data.
+          const ct = res.headers.get('content-type') || '';
+          if (!ASSET_CONTENT_TYPES.test(ct)) {
+            return new Response('', { status: 404, statusText: 'Stale asset' });
           }
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
           return res;
         });
       })
