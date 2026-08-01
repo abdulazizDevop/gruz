@@ -1,14 +1,20 @@
-const CACHE_NAME = 'doorman-v9';
+const CACHE_NAME = 'doorman-v10';
 // Pre-cache /index.html too so the navigate-fallback branch below has
 // something to fall back to when the server briefly can't respond. Missing
 // this was making the app dead-lock on a blank page during redeploys.
 const APP_SHELL = ['/', '/index.html', '/favicon.svg', '/doorman-logo.png', '/manifest.json'];
 
-// Content-types we're willing to cache under an /assets/ URL. Anything else
-// (most importantly text/html from Caddy's try_files fallback for stale
-// asset hashes) gets rejected so we don't poison the cache with HTML that
-// then fails to parse as JS forever.
-const ASSET_CONTENT_TYPES = /^(?:application\/javascript|application\/json|text\/css|font\/|image\/|application\/octet-stream)/i;
+// The only content-type we actively refuse to cache under an /assets/ URL
+// is text/html, which is what Caddy's try_files fallback returns when the
+// hashed file doesn't exist. Caching HTML under a .js key wedges the app
+// forever. Everything else (text/javascript from Caddy, application/json,
+// fonts, images, etc.) is passed through unchanged — v9 tried to allow-
+// list JS mime types and locked out text/javascript, blocking every
+// asset instead.
+const isPoisonedAssetResponse = (res) => {
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  return ct.includes('text/html');
+};
 
 // Firebase Cloud Messaging — background push handler. Loaded via importScripts
 // because CDN modules aren't allowed in a classic SW. Kept in THIS file (not a
@@ -121,8 +127,7 @@ self.addEventListener('fetch', (event) => {
           // a .js URL causes an infinite "Загрузка базы данных" spinner
           // on every subsequent reload — client can't recover without
           // manually clearing site data.
-          const ct = res.headers.get('content-type') || '';
-          if (!ASSET_CONTENT_TYPES.test(ct)) {
+          if (isPoisonedAssetResponse(res)) {
             return new Response('', { status: 404, statusText: 'Stale asset' });
           }
           const copy = res.clone();
