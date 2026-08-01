@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -32,13 +32,42 @@ import Login from "./pages/Login";
 import BottomNav from "./components/BottomNav";
 import { hasPermission, firstAllowedPath } from "./lib/permissions";
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Orders = lazy(() => import("./pages/Orders"));
-const WarehousePage = lazy(() => import("./pages/Warehouse"));
-const ReservedWarehouse = lazy(() => import("./pages/ReservedWarehouse"));
-const AdminManagement = lazy(() => import("./pages/AdminManagement"));
-const Wholesalers = lazy(() => import("./pages/Wholesalers"));
-const ArchivePage = lazy(() => import("./pages/Archive"));
+// Lazy imports are declared as thunks first so we can (a) hand them to
+// React.lazy for Suspense-driven code-splitting AND (b) call the same
+// thunk from prefetchAllPages() below to warm the cache in the background.
+// After the initial page settles, we kick off every other page's chunk so
+// navigating between sections is instant instead of showing a spinner on
+// the first visit to each route.
+const importDashboard = () => import("./pages/Dashboard");
+const importOrders = () => import("./pages/Orders");
+const importWarehouse = () => import("./pages/Warehouse");
+const importReservedWarehouse = () => import("./pages/ReservedWarehouse");
+const importAdminManagement = () => import("./pages/AdminManagement");
+const importWholesalers = () => import("./pages/Wholesalers");
+const importArchive = () => import("./pages/Archive");
+
+const Dashboard = lazy(importDashboard);
+const Orders = lazy(importOrders);
+const WarehousePage = lazy(importWarehouse);
+const ReservedWarehouse = lazy(importReservedWarehouse);
+const AdminManagement = lazy(importAdminManagement);
+const Wholesalers = lazy(importWholesalers);
+const ArchivePage = lazy(importArchive);
+
+const prefetchAllPages = () => {
+  const chunks = [
+    importDashboard,
+    importOrders,
+    importWarehouse,
+    importReservedWarehouse,
+    importAdminManagement,
+    importWholesalers,
+    importArchive,
+  ];
+  chunks.forEach((load) => {
+    load().catch(() => {});
+  });
+};
 
 const PageLoader = () => (
   <div className="flex items-center justify-center py-20">
@@ -378,18 +407,15 @@ const Layout = ({ children }) => {
               "max(6rem, calc(5rem + env(safe-area-inset-bottom)))",
           }}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-7xl mx-auto"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15 }}
+            className="max-w-7xl mx-auto"
+          >
+            {children}
+          </motion.div>
         </div>
       </main>
 
@@ -432,6 +458,15 @@ const Layout = ({ children }) => {
 };
 
 const App = () => {
+  useEffect(() => {
+    // After the first paint, warm up every route's chunk in the background
+    // so switching sections is instant instead of showing the Suspense
+    // spinner the first time each is opened. Delayed 1.5s so we don't
+    // compete with the initial route's own fetches.
+    const t = setTimeout(prefetchAllPages, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <AuthProvider>
       <OrderProvider>
