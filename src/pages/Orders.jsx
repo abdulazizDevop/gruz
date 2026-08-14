@@ -158,6 +158,7 @@ const Orders = () => {
   const canSeeClient = hasPermission(currentUser, "client_info");
   const canSetUrgent = hasPermission(currentUser, "set_urgent");
   const canCreateOrder = hasPermission(currentUser, "create_order");
+  const canMarkReady = hasPermission(currentUser, "mark_ready");
 
   const superadminIds = users
     .filter((u) => u.role === "superadmin")
@@ -968,15 +969,38 @@ const Orders = () => {
                     <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {["🚨 Срочное", "💭 В процессе", "✅ Сделано"].map((s) => {
                           const isUrgentBtn = s.includes("🚨");
+                          const isReadyBtn = s.includes("✅");
                           const disabled =
                             (!isAdmin && !isAssembler) ||
-                            (isUrgentBtn && !canSetUrgent);
+                            (isUrgentBtn && !canSetUrgent) ||
+                            (isReadyBtn && !canMarkReady);
+                          // Per-user visual state for ✅ Сделано (client ask):
+                          // - Highlight green ONLY for the assembler who marked
+                          //   it. Everyone else sees it in the default state,
+                          //   so each worker recognises their own completions
+                          //   at a glance without confusion.
+                          const isActive = activeSelected.status === s;
+                          const doneByMe =
+                            isReadyBtn &&
+                            isActive &&
+                            activeSelected.assemblerId === currentUser?.id;
+                          const showActive = isActive && (!isReadyBtn || doneByMe);
+                          let bgClass;
+                          if (doneByMe) bgClass = "bg-emerald-500 text-black";
+                          else if (showActive) bgClass = "bg-[#e8de8c] text-black";
+                          else bgClass = "bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]";
+                          let disabledReason;
+                          if (isUrgentBtn && !canSetUrgent) {
+                            disabledReason = "Нет права ставить «Срочное»";
+                          } else if (isReadyBtn && !canMarkReady) {
+                            disabledReason = "Нет права ставить «Сделано»";
+                          }
                           return (
                             <button
                               key={s}
                               onClick={() => {
                                 if (activeSelected.status === s) {
-                                  if (s === "✅ Сделано") {
+                                  if (isReadyBtn) {
                                     revertReadyStatus(activeSelected.id).catch(
                                       (err) => {
                                         console.error("Revert failed", err);
@@ -994,16 +1018,8 @@ const Orders = () => {
                                 );
                               }}
                               disabled={disabled}
-                              title={
-                                isUrgentBtn && !canSetUrgent
-                                  ? "Нет права ставить «Срочное»"
-                                  : undefined
-                              }
-                              className={`px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all text-center ${
-                                activeSelected.status === s
-                                  ? "bg-[#e8de8c] text-black"
-                                  : "bg-white/[0.04] text-gray-400 hover:bg-white/[0.08]"
-                              } disabled:opacity-40 disabled:cursor-not-allowed`}
+                              title={disabledReason}
+                              className={`px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all text-center ${bgClass} disabled:opacity-40 disabled:cursor-not-allowed`}
                             >
                               {s}
                             </button>
@@ -1287,7 +1303,7 @@ const Orders = () => {
                   </div>
 
                   {activeSelected.status?.includes("✅") &&
-                    (isAssembler || isAdmin) && (
+                    canMarkReady && (
                       <button
                         onClick={async () => {
                           if (
