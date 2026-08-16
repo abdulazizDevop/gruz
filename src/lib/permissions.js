@@ -1,6 +1,7 @@
 export const SECTIONS = [
   { key: 'dashboard', label: 'Главная' },
   { key: 'orders', label: 'Заказы' },
+  { key: 'urgent', label: 'Срочные заказы' },
   { key: 'wholesalers', label: 'Оптовики' },
   { key: 'warehouse', label: 'Склад' },
   { key: 'reserved', label: 'Заказной склад' },
@@ -19,11 +20,11 @@ const ALL_KEYS = [...SECTIONS.map(s => s.key), ...FEATURE_FLAGS.map(f => f.key)]
 
 const SYSTEM_DEFAULTS = {
   superadmin: ALL_KEYS,
-  admin: ['dashboard', 'orders', 'wholesalers', 'reserved', 'archive', 'client_info', 'set_urgent', 'manage_wholesalers', 'create_order', 'mark_ready'],
+  admin: ['dashboard', 'orders', 'urgent', 'wholesalers', 'reserved', 'archive', 'client_info', 'set_urgent', 'manage_wholesalers', 'create_order', 'mark_ready'],
   warehouse: ['dashboard', 'warehouse', 'reserved'],
 };
 
-const PRODUCTION_DEFAULTS = ['dashboard', 'orders', 'reserved'];
+const PRODUCTION_DEFAULTS = ['dashboard', 'orders', 'urgent', 'reserved'];
 
 export const getDefaultPermissions = (role) => {
   if (SYSTEM_DEFAULTS[role]) return [...SYSTEM_DEFAULTS[role]];
@@ -48,6 +49,7 @@ export const hasPermission = (user, key) => {
 const ROUTE_ORDER = [
   { permission: 'dashboard', path: '/' },
   { permission: 'orders', path: '/orders' },
+  { permission: 'urgent', path: '/urgent' },
   { permission: 'reserved', path: '/reserved' },
   { permission: 'warehouse', path: '/warehouse' },
   { permission: 'wholesalers', path: '/wholesalers' },

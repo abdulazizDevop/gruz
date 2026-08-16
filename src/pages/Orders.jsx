@@ -41,6 +41,11 @@ import {
   OPENING_OPTIONS,
   DOOR_FIELDS,
 } from "../lib/doorFields";
+import {
+  daysLeftFor,
+  deadlineLabel,
+  deadlineSeverity,
+} from "../lib/deadlines";
 
 const formatMoney = (v) => {
   const n = Number(v || 0);
@@ -68,6 +73,7 @@ const EMPTY_ORDER = {
   advance: "",
   wholesalerId: "",
   isUrgent: false,
+  deadlineDays: "",
   photos: [],
 };
 
@@ -107,6 +113,8 @@ const Orders = () => {
       });
     } else if (state?.fromReserved) {
       navigate("/reserved");
+    } else if (state?.fromUrgent) {
+      navigate("/urgent");
     }
   }, [location.state, navigate]);
 
@@ -209,6 +217,11 @@ const Orders = () => {
     const advanceNum = parseMoneyInput(o.advance);
     if (!priceNum || priceNum <= 0) err.price = "Укажите цену > 0";
     if (advanceNum > priceNum) err.advance = "Аванс не может быть больше цены";
+
+    const deadlineNum = parseInt(String(o.deadlineDays ?? "").trim(), 10);
+    if (!Number.isFinite(deadlineNum) || deadlineNum < 1 || deadlineNum > 999) {
+      err.deadlineDays = "Укажите срок готовности (1–999 дней)";
+    }
     return err;
   };
 
@@ -231,6 +244,7 @@ const Orders = () => {
       advance: advanceNum,
       total: priceNum,
       wholesaler,
+      deadlineDays: parseInt(String(newOrder.deadlineDays).trim(), 10),
       items: [],
     };
 
@@ -288,6 +302,7 @@ const Orders = () => {
       advance: formatMoneyInput(order.advance || ""),
       wholesalerId: order.wholesaler?.id || "",
       isUrgent: !!order.isUrgent,
+      deadlineDays: order.deadlineDays ? String(order.deadlineDays) : "",
       photos: order.photos || [],
     });
     setErrors({});
@@ -614,6 +629,17 @@ const Orders = () => {
           {filteredOrders.map((order, idx) => {
             const isUrgentOrder =
               order.isUrgent || order.status?.includes("🚨");
+            const daysLeft = daysLeftFor(order);
+            const dlSev = deadlineSeverity(daysLeft);
+            const dlLabel = deadlineLabel(daysLeft);
+            const dlClass =
+              dlSev === "overdue"
+                ? "bg-black text-red-300 border border-red-300/40"
+                : dlSev === "urgent"
+                  ? "bg-red-500/20 text-red-200 border border-red-400/50 animate-pulse"
+                  : dlSev === "warning"
+                    ? "bg-amber-500/20 text-amber-200 border border-amber-400/40"
+                    : "bg-white/10 text-gray-300 border border-white/10";
             return (
               <motion.div
                 key={order.id}
@@ -667,17 +693,27 @@ const Orders = () => {
                       </div>
                     </div>
                   </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                      isUrgentOrder
-                        ? "bg-white text-red-700 animate-pulse"
-                        : order.status?.includes("✅")
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : "bg-blue-500/15 text-blue-300"
-                    }`}
-                  >
-                    {order.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        isUrgentOrder
+                          ? "bg-white text-red-700 animate-pulse"
+                          : order.status?.includes("✅")
+                            ? "bg-emerald-500/15 text-emerald-300"
+                            : "bg-blue-500/15 text-blue-300"
+                      }`}
+                    >
+                      {order.status}
+                    </span>
+                    {dlLabel && (
+                      <span
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold whitespace-nowrap ${dlClass}`}
+                        title="Срок готовности"
+                      >
+                        {dlLabel}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Door quick specs */}
@@ -1442,6 +1478,29 @@ const Orders = () => {
                           placeholder="Напр. 2050x860"
                         />
                         <FieldError msg={errors.size} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">
+                          Срок готовности (дней) <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          max="999"
+                          step="1"
+                          value={newOrder.deadlineDays}
+                          onChange={(e) =>
+                            updateField("deadlineDays", e.target.value.replace(/[^0-9]/g, ""))
+                          }
+                          className={`w-full bg-white/[0.04] border rounded-xl p-3 focus:outline-none text-sm transition-colors ${
+                            errors.deadlineDays
+                              ? "border-red-500/50 focus:border-red-500"
+                              : "border-white/[0.06] focus:border-[#e8de8c]/30"
+                          }`}
+                          placeholder="Напр. 14"
+                        />
+                        <FieldError msg={errors.deadlineDays} />
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 font-medium mb-1 block uppercase tracking-wider">

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ShoppingCart, PackageCheck, Warehouse, Archive, Menu, Users
+  LayoutDashboard, ShoppingCart, PackageCheck, Warehouse, Archive, Menu, Users, AlertCircle
 } from 'lucide-react';
 import { hasPermission } from '../lib/permissions';
 
 const ALL_ITEMS = [
   { key: 'dashboard', to: '/', label: 'Главная', icon: LayoutDashboard },
   { key: 'orders', to: '/orders', label: 'Заказы', icon: ShoppingCart },
+  { key: 'urgent', to: '/urgent', label: 'Срочные', icon: AlertCircle },
   { key: 'reserved', to: '/reserved', label: 'Заказной', icon: PackageCheck },
   { key: 'warehouse', to: '/warehouse', label: 'Склад', icon: Warehouse },
   { key: 'wholesalers', to: '/wholesalers', label: 'Оптовики', icon: Users },

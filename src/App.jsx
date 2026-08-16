@@ -40,6 +40,7 @@ import { hasPermission, firstAllowedPath } from "./lib/permissions";
 // the first visit to each route.
 const importDashboard = () => import("./pages/Dashboard");
 const importOrders = () => import("./pages/Orders");
+const importUrgentOrders = () => import("./pages/UrgentOrders");
 const importWarehouse = () => import("./pages/Warehouse");
 const importReservedWarehouse = () => import("./pages/ReservedWarehouse");
 const importAdminManagement = () => import("./pages/AdminManagement");
@@ -48,6 +49,7 @@ const importArchive = () => import("./pages/Archive");
 
 const Dashboard = lazy(importDashboard);
 const Orders = lazy(importOrders);
+const UrgentOrders = lazy(importUrgentOrders);
 const WarehousePage = lazy(importWarehouse);
 const ReservedWarehouse = lazy(importReservedWarehouse);
 const AdminManagement = lazy(importAdminManagement);
@@ -58,6 +60,7 @@ const prefetchAllPages = () => {
   const chunks = [
     importDashboard,
     importOrders,
+    importUrgentOrders,
     importWarehouse,
     importReservedWarehouse,
     importAdminManagement,
@@ -199,6 +202,15 @@ const Layout = ({ children }) => {
                 icon={ShoppingCart}
                 label="Заказы"
                 active={location.pathname === "/orders"}
+                collapsed={collapsed}
+              />
+            )}
+            {hasPermission(currentUser, "urgent") && (
+              <SidebarItem
+                to="/urgent"
+                icon={AlertCircle}
+                label="Срочные заказы"
+                active={location.pathname === "/urgent"}
                 collapsed={collapsed}
               />
             )}
@@ -490,6 +502,16 @@ const App = () => {
                   <ProtectedRoute permission="orders">
                     <Layout>
                       <Orders />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/urgent"
+                element={
+                  <ProtectedRoute permission="urgent">
+                    <Layout>
+                      <UrgentOrders />
                     </Layout>
                   </ProtectedRoute>
                 }
