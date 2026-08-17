@@ -65,6 +65,7 @@ const ReservedWarehouse = () => {
         <AnimatePresence mode="popLayout">
           {reservedOrders.map((order, idx) => {
             const isUrgentOrder = order.isUrgent || order.status?.includes('🚨');
+            const doneByMe = order.assemblerId === currentUser?.id;
             return (
             <motion.div
               layout
@@ -81,7 +82,9 @@ const ReservedWarehouse = () => {
               className={`rounded-2xl p-6 transition-all group cursor-pointer ${
                 isUrgentOrder
                   ? 'bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60'
-                  : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30'
+                  : doneByMe
+                    ? 'bg-emerald-500/[0.08] border-2 border-emerald-500/50 hover:border-emerald-400 shadow-lg shadow-emerald-900/40'
+                    : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30'
               }`}
             >
               <div className="flex flex-col lg:flex-row items-center gap-6">

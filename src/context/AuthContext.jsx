@@ -98,8 +98,23 @@ export const AuthProvider = ({ children }) => {
     if (currentUser) {
       localStorage.setItem('doorman_currentUser', JSON.stringify(currentUser));
       const fresh = users.find(u => u.id === currentUser.id);
-      if (fresh && (fresh.name !== currentUser.name || fresh.password !== currentUser.password || fresh.role !== currentUser.role)) {
-        setCurrentUser(fresh);
+      if (fresh) {
+        // Compare every field that gates UI behaviour, not just
+        // name/password/role — new mark_ready permission was invisible to
+        // workers whose superadmin toggled it because permissions changes
+        // weren't in the diff check. Now they pick it up on the next
+        // users snapshot, no re-login needed.
+        const currentPerms = JSON.stringify(currentUser.permissions ?? null);
+        const freshPerms = JSON.stringify(fresh.permissions ?? null);
+        if (
+          fresh.name !== currentUser.name ||
+          fresh.password !== currentUser.password ||
+          fresh.role !== currentUser.role ||
+          currentPerms !== freshPerms ||
+          fresh.fcmToken !== currentUser.fcmToken
+        ) {
+          setCurrentUser(fresh);
+        }
       }
       // Register this device's FCM token against the logged-in user so the
       // backend can reach them with push. Safe to run repeatedly — no-op

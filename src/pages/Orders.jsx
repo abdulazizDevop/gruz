@@ -1338,6 +1338,21 @@ const Orders = () => {
                     </div>
                   </div>
 
+                  {!activeSelected.status?.includes("✅") && canMarkReady && (
+                    <button
+                      onClick={() =>
+                        updateOrderStatus(
+                          activeSelected.id,
+                          "✅ Сделано",
+                          currentUser.id,
+                          currentUser.name,
+                        )
+                      }
+                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <CheckCircle2 size={18} /> Готово
+                    </button>
+                  )}
                   {activeSelected.status?.includes("✅") &&
                     canMarkReady && (
                       <button
