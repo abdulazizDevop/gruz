@@ -179,10 +179,14 @@ const Orders = () => {
             o.adminId === currentUser?.id || superadminIds.includes(o.adminId),
         );
 
-  // Once an order is marked ✅ Сделано it moves to Заказной склад and
-  // disappears from the Заказы list — per client's workflow ask.
+  // Done orders normally move to Заказной склад and disappear from Заказы.
+  // Exception: orders THIS user marked done stay visible here as a
+  // personal "I finished this" marker, highlighted dark green. Orders
+  // marked done by others are still hidden.
   const activeOrders = visibleOrders.filter(
-    (o) => !o.status?.includes("✅"),
+    (o) =>
+      !o.status?.includes("✅") ||
+      o.assemblerId === currentUser?.id,
   );
   const filteredOrders = activeOrders.filter((o) => {
     const q = searchTerm.toLowerCase();
@@ -629,6 +633,9 @@ const Orders = () => {
           {filteredOrders.map((order, idx) => {
             const isUrgentOrder =
               order.isUrgent || order.status?.includes("🚨");
+            const doneByMe =
+              order.status?.includes("✅") &&
+              order.assemblerId === currentUser?.id;
             const daysLeft = daysLeftFor(order);
             const dlSev = deadlineSeverity(daysLeft);
             const dlLabel = deadlineLabel(daysLeft);
@@ -640,6 +647,17 @@ const Orders = () => {
                   : dlSev === "warning"
                     ? "bg-amber-500/20 text-amber-200 border border-amber-400/40"
                     : "bg-white/10 text-gray-300 border border-white/10";
+            let cardClass;
+            if (isUrgentOrder) {
+              cardClass = "bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60";
+            } else if (doneByMe) {
+              // Dark green for orders THIS worker marked ✅ — personal
+              // "I did this" marker that persists even after the order
+              // moves onward. Bright emerald was too light per client.
+              cardClass = "bg-emerald-900/25 border-2 border-emerald-700 hover:border-emerald-500 shadow-lg shadow-emerald-950/50";
+            } else {
+              cardClass = "bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30";
+            }
             return (
               <motion.div
                 key={order.id}
@@ -648,11 +666,7 @@ const Orders = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: Math.min(idx * 0.02, 0.15), duration: 0.2 }}
                 onClick={() => setSelectedOrder(order)}
-                className={`rounded-2xl p-5 cursor-pointer group transition-all ${
-                  isUrgentOrder
-                    ? "bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60"
-                    : "bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30"
-                }`}
+                className={`rounded-2xl p-5 cursor-pointer group transition-all ${cardClass}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">

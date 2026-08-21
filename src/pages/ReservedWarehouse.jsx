@@ -83,7 +83,7 @@ const ReservedWarehouse = () => {
                 isUrgentOrder
                   ? 'bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60'
                   : doneByMe
-                    ? 'bg-emerald-500/[0.08] border-2 border-emerald-500/50 hover:border-emerald-400 shadow-lg shadow-emerald-900/40'
+                    ? 'bg-emerald-900/25 border-2 border-emerald-700 hover:border-emerald-500 shadow-lg shadow-emerald-950/50'
                     : 'bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30'
               }`}
             >
