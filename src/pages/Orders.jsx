@@ -1336,17 +1336,26 @@ const Orders = () => {
                     </div>
                   </div>
 
-                  {!activeSelected.status?.includes("✅") && canMarkReady && (
+                  {!activeSelected.status?.includes("✅") && (
                     <button
-                      onClick={() =>
-                        updateOrderStatus(
-                          activeSelected.id,
-                          "✅ Сделано",
-                          currentUser.id,
-                          currentUser.name,
-                        )
+                      onClick={
+                        canMarkReady
+                          ? () =>
+                              updateOrderStatus(
+                                activeSelected.id,
+                                "✅ Сделано",
+                                currentUser.id,
+                                currentUser.name,
+                              )
+                          : undefined
                       }
-                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                      disabled={!canMarkReady}
+                      title={
+                        !canMarkReady
+                          ? "Нет права ставить «Сделано». Обратитесь к администратору."
+                          : undefined
+                      }
+                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900/40 disabled:text-emerald-300/60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                     >
                       <CheckCircle2 size={18} /> Готово
                     </button>
