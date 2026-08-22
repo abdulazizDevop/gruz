@@ -1,4 +1,4 @@
-const CACHE_NAME = 'doorman-v10';
+const CACHE_NAME = 'doorman-v11';
 // Pre-cache /index.html too so the navigate-fallback branch below has
 // something to fall back to when the server briefly can't respond. Missing
 // this was making the app dead-lock on a blank page during redeploys.
@@ -99,6 +99,10 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/src/') || url.pathname.startsWith('/@')) return;
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) return;
   if (url.pathname === '/service-worker.js') return;
+  // Always go straight to network for the version manifest — the update
+  // gate on the client polls this to detect stale bundles, and if the
+  // SW returned a stale cached copy the gate would never trigger.
+  if (url.pathname === '/version.json') return;
 
   const accept = req.headers.get('accept') || '';
   const isHTML = req.mode === 'navigate' || accept.includes('text/html');

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -30,7 +30,9 @@ import {
 
 import Login from "./pages/Login";
 import BottomNav from "./components/BottomNav";
+import UpdateBlocker from "./components/UpdateBlocker";
 import { hasPermission, firstAllowedPath } from "./lib/permissions";
+import { APP_VERSION, fetchServerVersion } from "./lib/version";
 
 // Lazy imports are declared as thunks first so we can (a) hand them to
 // React.lazy for Suspense-driven code-splitting AND (b) call the same
@@ -470,16 +472,76 @@ const Layout = ({ children }) => {
 };
 
 const App = () => {
+  const [outdated, setOutdated] = useState(null);
+
   useEffect(() => {
-    // After the first paint, warm up every route's chunk in the background
-    // so switching sections is instant instead of showing the Suspense
-    // spinner the first time each is opened. Delayed 1.5s so we don't
-    // compete with the initial route's own fetches.
     const t = setTimeout(prefetchAllPages, 1500);
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    // Force-update gate: compare the bundled __APP_VERSION__ against
+    // /version.json on the server. If the server has a newer stamp we
+    // show a non-dismissable overlay so a stale client can't keep using
+    // an outdated build. Only fires on a CONFIRMED mismatch — fetch
+    // failures, offline, and unrecognised responses are treated as
+    // "unknown, allow" so a network hiccup doesn't lock the app.
+    let alive = true;
+    let confirmedMismatch = false;
+
+    const check = async () => {
+      const serverVersion = await fetchServerVersion();
+      if (!alive) return;
+      if (!serverVersion) return;
+      if (serverVersion === APP_VERSION) {
+        if (outdated) setOutdated(null);
+        return;
+      }
+      // Re-fetch once after a short delay to survive the race where a
+      // deploy landed between our bundle download and this check.
+      if (!confirmedMismatch) {
+        confirmedMismatch = true;
+        setTimeout(() => {
+          if (alive) check();
+        }, 2000);
+        return;
+      }
+      setOutdated({ current: APP_VERSION, server: serverVersion });
+    };
+
+    check();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    const onPageshow = () => check();
+    const onFocus = () => check();
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageshow);
+    window.addEventListener("focus", onFocus);
+
+    // ~5min jittered poll so an idle open tab still notices deploys.
+    const poll = setInterval(check, 4 * 60_000 + Math.random() * 2 * 60_000);
+
+    return () => {
+      alive = false;
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageshow);
+      window.removeEventListener("focus", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
+    <>
+      {outdated && (
+        <UpdateBlocker
+          serverVersion={outdated.server}
+          currentVersion={outdated.current}
+        />
+      )}
     <AuthProvider>
       <OrderProvider>
         <Router>
@@ -572,6 +634,7 @@ const App = () => {
         </Router>
       </OrderProvider>
     </AuthProvider>
+    </>
   );
 };
 

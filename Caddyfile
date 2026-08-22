@@ -8,7 +8,7 @@
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-	@noCache path /service-worker.js /firebase-messaging-sw.js /manifest.json
+	@noCache path /service-worker.js /firebase-messaging-sw.js /manifest.json /version.json
 	header @noCache Cache-Control "no-cache, no-store, must-revalidate"
 
 	# index.html must not be cached — it references content-hashed /assets/
