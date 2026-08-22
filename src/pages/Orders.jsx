@@ -630,14 +630,28 @@ const Orders = () => {
                   : dlSev === "warning"
                     ? "bg-amber-500/20 text-amber-200 border border-amber-400/40"
                     : "bg-white/10 text-gray-300 border border-white/10";
+            // Two "solid" card states — urgent (red) and done-by-me (dark
+            // green). Both use the same white-on-color inner styling so
+            // one helper (isHighlighted / labelMuted) drives everything
+            // inside the card.
+            const isHighlighted = isUrgentOrder || doneByMe;
+            const labelMuted = isUrgentOrder
+              ? "text-red-100"
+              : doneByMe
+                ? "text-emerald-100"
+                : "text-gray-500";
+            const highlightBorder = isUrgentOrder
+              ? "border-red-300/30"
+              : doneByMe
+                ? "border-emerald-400/30"
+                : "border-white/[0.04]";
             let cardClass;
             if (isUrgentOrder) {
               cardClass = "bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60";
             } else if (doneByMe) {
-              // Dark green for orders THIS worker marked ✅ — personal
-              // "I did this" marker that persists even after the order
-              // moves onward. Bright emerald was too light per client.
-              cardClass = "bg-emerald-900/25 border-2 border-emerald-700 hover:border-emerald-500 shadow-lg shadow-emerald-950/50";
+              // Client wanted the whole card dark green, matching how
+              // urgent orders are fully red — not a subtle tint.
+              cardClass = "bg-emerald-800 border-2 border-emerald-400 hover:border-white shadow-2xl shadow-emerald-950/60";
             } else {
               cardClass = "bg-[#1a1a20] border border-white/10 hover:border-[#e8de8c]/25 shadow-lg shadow-black/30";
             }
@@ -657,9 +671,11 @@ const Orders = () => {
                       className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold ${
                         isUrgentOrder
                           ? "bg-white text-red-700"
-                          : order.status?.includes("✅")
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : "bg-blue-500/10 text-blue-400"
+                          : doneByMe
+                            ? "bg-white text-emerald-800"
+                            : order.status?.includes("✅")
+                              ? "bg-emerald-500/10 text-emerald-400"
+                              : "bg-blue-500/10 text-blue-400"
                       }`}
                     >
                       #{order.code}
@@ -667,7 +683,7 @@ const Orders = () => {
                     <div>
                       <h3
                         className={`font-semibold transition-colors ${
-                          isUrgentOrder
+                          isHighlighted
                             ? "text-white"
                             : "group-hover:text-[#e8de8c]"
                         }`}
@@ -675,9 +691,7 @@ const Orders = () => {
                         {order.client?.name || `Заказ #${order.code}`}
                       </h3>
                       <div
-                        className={`flex items-center gap-1.5 text-xs mt-0.5 ${
-                          isUrgentOrder ? "text-red-100" : "text-gray-500"
-                        }`}
+                        className={`flex items-center gap-1.5 text-xs mt-0.5 ${labelMuted}`}
                       >
                         <Calendar size={10} />
                         {new Date(order.createdAt).toLocaleString("ru-RU", {
@@ -695,9 +709,11 @@ const Orders = () => {
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                         isUrgentOrder
                           ? "bg-white text-red-700 animate-pulse"
-                          : order.status?.includes("✅")
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-blue-500/15 text-blue-300"
+                          : doneByMe
+                            ? "bg-white text-emerald-800"
+                            : order.status?.includes("✅")
+                              ? "bg-emerald-500/15 text-emerald-300"
+                              : "bg-blue-500/15 text-blue-300"
                       }`}
                     >
                       {order.status}
@@ -716,43 +732,43 @@ const Orders = () => {
                 {/* Door quick specs */}
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <div
-                    className={`rounded-lg px-3 py-2 ${isUrgentOrder ? "bg-black/30" : "bg-white/4"}`}
+                    className={`rounded-lg px-3 py-2 ${isHighlighted ? "bg-black/30" : "bg-white/4"}`}
                   >
                     <p
-                      className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
+                      className={`text-[10px] ${labelMuted}`}
                     >
                       Модель
                     </p>
                     <p
-                      className={`text-sm font-medium truncate ${isUrgentOrder ? "text-white" : ""}`}
+                      className={`text-sm font-medium truncate ${isHighlighted ? "text-white" : ""}`}
                     >
                       {order.model || "—"}
                     </p>
                   </div>
                   <div
-                    className={`rounded-lg px-3 py-2 ${isUrgentOrder ? "bg-black/30" : "bg-white/4"}`}
+                    className={`rounded-lg px-3 py-2 ${isHighlighted ? "bg-black/30" : "bg-white/4"}`}
                   >
                     <p
-                      className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
+                      className={`text-[10px] ${labelMuted}`}
                     >
                       Размер
                     </p>
                     <p
-                      className={`text-sm font-medium truncate ${isUrgentOrder ? "text-white" : ""}`}
+                      className={`text-sm font-medium truncate ${isHighlighted ? "text-white" : ""}`}
                     >
                       {order.size || "—"}
                     </p>
                   </div>
                   <div
-                    className={`rounded-lg px-3 py-2 ${isUrgentOrder ? "bg-black/30" : "bg-white/4"}`}
+                    className={`rounded-lg px-3 py-2 ${isHighlighted ? "bg-black/30" : "bg-white/4"}`}
                   >
                     <p
-                      className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
+                      className={`text-[10px] ${labelMuted}`}
                     >
                       Цвет
                     </p>
                     <p
-                      className={`text-sm font-medium truncate ${isUrgentOrder ? "text-white" : ""}`}
+                      className={`text-sm font-medium truncate ${isHighlighted ? "text-white" : ""}`}
                     >
                       {order.color || "—"}
                     </p>
@@ -781,40 +797,40 @@ const Orders = () => {
                 {/* Price footer */}
                 {canSeeClient && (
                   <div
-                    className={`mt-4 grid grid-cols-3 gap-2 pt-4 border-t ${isUrgentOrder ? "border-red-300/30" : "border-white/[0.04]"}`}
+                    className={`mt-4 grid grid-cols-3 gap-2 pt-4 border-t ${highlightBorder}`}
                   >
                     <div className="min-w-0">
                       <p
-                        className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
+                        className={`text-[10px] ${labelMuted}`}
                       >
                         Телефон
                       </p>
                       <p
-                        className={`text-xs font-medium truncate ${isUrgentOrder ? "text-white" : ""}`}
+                        className={`text-xs font-medium truncate ${isHighlighted ? "text-white" : ""}`}
                       >
                         {order.client?.phone || "—"}
                       </p>
                     </div>
                     <div className="text-right">
                       <p
-                        className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
+                        className={`text-[10px] ${labelMuted}`}
                       >
                         Цена
                       </p>
                       <p
-                        className={`text-sm font-bold ${isUrgentOrder ? "text-white" : ""}`}
+                        className={`text-sm font-bold ${isHighlighted ? "text-white" : ""}`}
                       >
                         {formatMoney(order.price)} ₽
                       </p>
                     </div>
                     <div className="text-right">
                       <p
-                        className={`text-[10px] ${isUrgentOrder ? "text-red-100" : "text-gray-500"}`}
+                        className={`text-[10px] ${labelMuted}`}
                       >
                         Остаток
                       </p>
                       <p
-                        className={`text-sm font-bold ${isUrgentOrder ? "text-white" : "text-red-400"}`}
+                        className={`text-sm font-bold ${isHighlighted ? "text-white" : "text-red-400"}`}
                       >
                         {formatMoney(
                           Math.max(
@@ -831,15 +847,15 @@ const Orders = () => {
                 {order.responseRoom?.length > 0 && (
                   <div
                     className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 ${
-                      isUrgentOrder ? "bg-black/30" : "bg-blue-500/5"
+                      isHighlighted ? "bg-black/30" : "bg-blue-500/5"
                     }`}
                   >
                     <MessageSquare
                       size={12}
-                      className={`shrink-0 ${isUrgentOrder ? "text-red-100" : "text-blue-400"}`}
+                      className={`shrink-0 ${isHighlighted ? (doneByMe ? "text-emerald-100" : "text-red-100") : "text-blue-400"}`}
                     />
                     <p
-                      className={`text-xs truncate ${isUrgentOrder ? "text-white" : "text-blue-400"}`}
+                      className={`text-xs truncate ${isHighlighted ? "text-white" : "text-blue-400"}`}
                     >
                       {
                         order.responseRoom[order.responseRoom.length - 1]
