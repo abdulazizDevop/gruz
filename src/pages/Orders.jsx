@@ -85,6 +85,8 @@ const Orders = () => {
     updateOrder,
     updateOrderStatus,
     revertReadyStatus,
+    markReady,
+    unmarkReady,
     addResponse,
     removeResponse,
     markShipped,
@@ -614,9 +616,16 @@ const Orders = () => {
           {filteredOrders.map((order, idx) => {
             const isUrgentOrder =
               order.isUrgent || order.status?.includes("🚨");
+            // Personal "I marked this ready" — new readyBy-array model.
+            // Falls back to the legacy single-assembler flag so orders
+            // marked before this change still light up for the person
+            // who pressed then.
             const doneByMe =
-              order.status?.includes("✅") &&
-              order.assemblerId === currentUser?.id;
+              (order.readyBy || []).some(
+                (r) => r.userId === currentUser?.id,
+              ) ||
+              (order.status?.includes("✅") &&
+                order.assemblerId === currentUser?.id);
             const daysLeft = daysLeftFor(order);
             const dlSev = deadlineSeverity(daysLeft);
             const dlLabel = deadlineLabel(daysLeft);
@@ -1074,6 +1083,24 @@ const Orders = () => {
                         },
                       )}
                     </div>
+                    {isAdmin && (activeSelected.readyBy || []).length > 0 && (
+                      <div className="mt-3 p-3 bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl">
+                        <p className="text-[10px] text-emerald-300/80 font-semibold uppercase tracking-wider mb-1.5">
+                          Отметили «Готово» ({activeSelected.readyBy.length})
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeSelected.readyBy.map((r) => (
+                            <span
+                              key={r.userId}
+                              className="text-xs bg-emerald-500/15 text-emerald-200 px-2 py-0.5 rounded-lg"
+                              title={new Date(r.timestamp).toLocaleString("ru-RU")}
+                            >
+                              ✅ {r.userName || r.userId}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </section>
 
                   {/* Door specs */}
@@ -1334,21 +1361,38 @@ const Orders = () => {
                     </div>
                   </div>
 
-                  {!activeSelected.status?.includes("✅") && (
-                    <button
-                      onClick={() =>
-                        updateOrderStatus(
-                          activeSelected.id,
-                          "✅ Сделано",
-                          currentUser.id,
-                          currentUser.name,
-                        )
-                      }
-                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <CheckCircle2 size={18} /> Готово
-                    </button>
-                  )}
+                  {/* Personal Готово. Each worker independently toggles
+                      themselves in the order's readyBy list. Does NOT
+                      change the order's status and does NOT move the
+                      order — only the логист pressing Отгрузить does
+                      that. Button appears green when THIS user has
+                      already marked. Legacy assemblerId is also treated
+                      as "I marked" for orders pressed before this
+                      change so those don't lose their green highlight. */}
+                  {(() => {
+                    const readyBy = activeSelected.readyBy || [];
+                    const iAmReady =
+                      readyBy.some((r) => r.userId === currentUser?.id) ||
+                      (activeSelected.status?.includes("✅") &&
+                        activeSelected.assemblerId === currentUser?.id);
+                    return (
+                      <button
+                        onClick={() =>
+                          iAmReady
+                            ? unmarkReady(activeSelected.id, currentUser?.id)
+                            : markReady(activeSelected.id, currentUser)
+                        }
+                        className={`mt-3 w-full font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${
+                          iAmReady
+                            ? "bg-emerald-800 hover:bg-emerald-700 text-white border-2 border-emerald-400"
+                            : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        }`}
+                      >
+                        <CheckCircle2 size={18} />
+                        {iAmReady ? "Готово ✅ (нажмите чтобы убрать)" : "Готово"}
+                      </button>
+                    );
+                  })()}
                   {activeSelected.status?.includes("✅") &&
                     canMarkReady && (
                       <button

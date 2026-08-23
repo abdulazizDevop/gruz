@@ -16,7 +16,15 @@ const ReservedWarehouse = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const reservedOrders = useMemo(() => {
-    const base = orders.filter(o => o.status?.includes('✅'));
+    // Orders visible to логист: any order marked ready by at least one
+    // worker (readyBy.length > 0), OR the legacy full-status ✅ Сделано
+    // (kept so orders marked before the readyBy model don't disappear
+    // from the shipping queue).
+    const base = orders.filter(
+      (o) =>
+        (Array.isArray(o.readyBy) && o.readyBy.length > 0) ||
+        o.status?.includes('✅'),
+    );
     if (!searchTerm.trim()) return base;
     const q = searchTerm.trim().toLowerCase();
     return base.filter(o => {

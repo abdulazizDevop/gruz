@@ -296,8 +296,34 @@ export const OrderProvider = ({ children }) => {
     });
   };
 
+  // Per-worker "Готово" marker. Each worker independently adds themselves
+  // to the order's readyBy array — the order's overall status doesn't
+  // change and the order never leaves Заказы because of a personal
+  // marker. Only the логист pressing "Отгрузить" moves the order onward.
+  const markReady = async (orderId, user) => {
+    if (!user?.id) return;
+    const order = orders.find(o => o.id === orderId);
+    const already = (order?.readyBy || []).some(r => r.userId === user.id);
+    if (already) return;
+    await updateDoc(doc(db, 'orders', orderId), {
+      readyBy: arrayUnion({
+        userId: user.id,
+        userName: user.name || '',
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  };
+
+  const unmarkReady = async (orderId, userId) => {
+    if (!userId) return;
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const nextReadyBy = (order.readyBy || []).filter(r => r.userId !== userId);
+    await updateDoc(doc(db, 'orders', orderId), { readyBy: nextReadyBy });
+  };
+
   const updateOrder = async (orderId, patch) => {
-    const immutable = ['id', 'code', 'createdAt', 'adminId', 'adminName', 'status', 'responseRoom', 'assemblerId', 'assemblerName', 'readyAt'];
+    const immutable = ['id', 'code', 'createdAt', 'adminId', 'adminName', 'status', 'responseRoom', 'assemblerId', 'assemblerName', 'readyAt', 'readyBy'];
     const safe = { ...patch };
     immutable.forEach(k => delete safe[k]);
     safe.updatedAt = new Date().toISOString();
@@ -365,6 +391,7 @@ export const OrderProvider = ({ children }) => {
         wholesaler: orderToShip.wholesaler || null,
         photos: orderToShip.photos || [],
         responseRoom: orderToShip.responseRoom || [],
+        readyBy: orderToShip.readyBy || [],
         items: (orderToShip.items || []).map(i => ({
           name: i.name,
           qty: i.qty,
@@ -434,6 +461,8 @@ export const OrderProvider = ({ children }) => {
     updateOrder,
     updateOrderStatus,
     revertReadyStatus,
+    markReady,
+    unmarkReady,
     addResponse,
     removeResponse,
     markShipped,
