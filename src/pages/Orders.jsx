@@ -179,15 +179,13 @@ const Orders = () => {
             o.adminId === currentUser?.id || superadminIds.includes(o.adminId),
         );
 
-  // Done orders normally move to Заказной склад and disappear from Заказы.
-  // Exception: orders THIS user marked done stay visible here as a
-  // personal "I finished this" marker, highlighted dark green. Orders
-  // marked done by others are still hidden.
-  const activeOrders = visibleOrders.filter(
-    (o) =>
-      !o.status?.includes("✅") ||
-      o.assemblerId === currentUser?.id,
-  );
+  // Client kept reporting "заказы исчезают" — when someone pressed
+  // Готово, the order left the list for anyone whose id didn't match
+  // assemblerId. Workers took that as "my change was lost" and lost
+  // trust in the app. Show everything now (until it's actually shipped
+  // — those live in Архив/sales), the dark-green highlight on done-
+  // by-me is what distinguishes personal completions visually.
+  const activeOrders = visibleOrders;
   const filteredOrders = activeOrders.filter((o) => {
     const q = searchTerm.toLowerCase();
     return (
