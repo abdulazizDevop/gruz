@@ -16,15 +16,12 @@ const ReservedWarehouse = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const reservedOrders = useMemo(() => {
-    // Orders visible to логист: any order marked ready by at least one
-    // worker (readyBy.length > 0), OR the legacy full-status ✅ Сделано
-    // (kept so orders marked before the readyBy model don't disappear
-    // from the shipping queue).
-    const base = orders.filter(
-      (o) =>
-        (Array.isArray(o.readyBy) && o.readyBy.length > 0) ||
-        o.status?.includes('✅'),
-    );
+    // Only orders the логист has explicitly moved forward via the
+    // status-row ✅ Сделано button appear here. Personal Готово
+    // marks by workers stay in Заказы only — client didn't want the
+    // same order in two sections just because a worker flagged their
+    // personal completion.
+    const base = orders.filter((o) => o.status?.includes('✅'));
     if (!searchTerm.trim()) return base;
     const q = searchTerm.trim().toLowerCase();
     return base.filter(o => {

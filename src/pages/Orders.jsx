@@ -1083,24 +1083,6 @@ const Orders = () => {
                         },
                       )}
                     </div>
-                    {isAdmin && (activeSelected.readyBy || []).length > 0 && (
-                      <div className="mt-3 p-3 bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl">
-                        <p className="text-[10px] text-emerald-300/80 font-semibold uppercase tracking-wider mb-1.5">
-                          Отметили «Готово» ({activeSelected.readyBy.length})
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {activeSelected.readyBy.map((r) => (
-                            <span
-                              key={r.userId}
-                              className="text-xs bg-emerald-500/15 text-emerald-200 px-2 py-0.5 rounded-lg"
-                              title={new Date(r.timestamp).toLocaleString("ru-RU")}
-                            >
-                              ✅ {r.userName || r.userId}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </section>
 
                   {/* Door specs */}
