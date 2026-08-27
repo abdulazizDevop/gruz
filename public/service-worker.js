@@ -1,4 +1,4 @@
-const CACHE_NAME = 'doorman-v11';
+const CACHE_NAME = 'doorman-v12';
 // Pre-cache /index.html too so the navigate-fallback branch below has
 // something to fall back to when the server briefly can't respond. Missing
 // this was making the app dead-lock on a blank page during redeploys.
@@ -108,13 +108,43 @@ self.addEventListener('fetch', (event) => {
   const isHTML = req.mode === 'navigate' || accept.includes('text/html');
 
   if (isHTML) {
+    // Belt-and-braces navigation handler. Anywhere in this chain a
+    // rejected promise or an undefined value used to propagate straight
+    // into event.respondWith and blow up with "Failed to convert value
+    // to 'Response'", which is what Ayub's console just showed. The
+    // wrapper below always resolves to a real Response — either from
+    // the network, from the cached shell, or a minimal offline
+    // fallback — so the browser never sees a broken FetchEvent.
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (!res || res.status !== 200) throw new Error('bad-html');
-          return res;
-        })
-        .catch(() => caches.match('/index.html').then((r) => r || fetch('/index.html')))
+      (async () => {
+        try {
+          const res = await fetch(req);
+          if (res && res.status === 200) return res;
+          throw new Error('bad-network');
+        } catch {
+          try {
+            const cached = await caches.match('/index.html');
+            if (cached) return cached;
+          } catch {
+            // ignore cache errors
+          }
+          try {
+            const fallback = await fetch('/index.html');
+            if (fallback) return fallback;
+          } catch {
+            // ignore network errors
+          }
+          return new Response(
+            '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
+              '<style>body{background:#0a0a0c;color:#e8de8c;font-family:sans-serif;padding:2rem;text-align:center}</style>' +
+              '<h1>DoorMan</h1><p>Нет соединения. Попробуйте обновить страницу.</p>',
+            {
+              status: 200,
+              headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            },
+          );
+        }
+      })(),
     );
     return;
   }
