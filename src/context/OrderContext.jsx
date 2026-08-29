@@ -300,16 +300,32 @@ export const OrderProvider = ({ children }) => {
   // to the order's readyBy array — the order's overall status doesn't
   // change and the order never leaves Заказы because of a personal
   // marker. Only the логист pressing "Отгрузить" moves the order onward.
+  //
+  // A matching entry is also written to responseRoom as a reaction
+  // chip so it shows up inline in the chat, alongside the older-style
+  // "Хасан — ✅ Готово" reactions. Client asked for that placement
+  // ("как Хасан Мухаммад, чтобы они отображались") — supervisors read
+  // the chat top-to-bottom and want the marker to live there instead of
+  // in a separate strip.
   const markReady = async (orderId, user) => {
     if (!user?.id) return;
     const order = orders.find(o => o.id === orderId);
     const already = (order?.readyBy || []).some(r => r.userId === user.id);
     if (already) return;
+    const timestamp = new Date().toISOString();
     await updateDoc(doc(db, 'orders', orderId), {
       readyBy: arrayUnion({
         userId: user.id,
         userName: user.name || '',
-        timestamp: new Date().toISOString(),
+        timestamp,
+      }),
+      responseRoom: arrayUnion({
+        userId: user.id,
+        userName: user.name || '',
+        message: '✅ Готово',
+        image: null,
+        type: 'ready-mark',
+        timestamp,
       }),
     });
   };
@@ -319,7 +335,17 @@ export const OrderProvider = ({ children }) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
     const nextReadyBy = (order.readyBy || []).filter(r => r.userId !== userId);
-    await updateDoc(doc(db, 'orders', orderId), { readyBy: nextReadyBy });
+    // Also strip out this user's ready-mark chat entries so the chat
+    // matches the underlying state. Legacy plain 'reaction' entries
+    // from before this change are left alone — those are chat notes
+    // the user chose to keep.
+    const nextRoom = (order.responseRoom || []).filter(
+      (r) => !(r.userId === userId && r.type === 'ready-mark'),
+    );
+    await updateDoc(doc(db, 'orders', orderId), {
+      readyBy: nextReadyBy,
+      responseRoom: nextRoom,
+    });
   };
 
   const updateOrder = async (orderId, patch) => {
