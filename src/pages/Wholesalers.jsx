@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUrlModal, drillTo } from '../hooks/useUrlModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +21,6 @@ const Wholesalers = () => {
   const { wholesalers, addWholesaler, updateWholesaler, deleteWholesaler, orders } = useOrders();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const canManage = hasPermission(currentUser, 'manage_wholesalers');
   const canSeeClient = hasPermission(currentUser, 'client_info');
 
@@ -31,20 +31,18 @@ const Wholesalers = () => {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const [viewingWholesaler, setViewingWholesaler] = useState(null);
-
-  // Reopen the wholesaler card when Orders sends us back with state — this
-  // keeps the user "inside" the Оптовики section instead of dumping them
-  // onto /orders after they close the order detail modal.
-  useEffect(() => {
-    const returnToId = location.state?.openWholesaler;
-    if (!returnToId) return;
-    const w = wholesalers.find((x) => x.id === returnToId);
-    if (w) {
-      setViewingWholesaler(w);
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [wholesalers, location.state, location.pathname, navigate]);
+  // The open card lives in the URL (/wholesalers?w=<id>) as its own
+  // history entry. Drilling into an order pushes /orders?open=<id> on
+  // top, so Назад there pops straight back to this card — no state
+  // hand-off needed, and hardware back behaves the same way.
+  const {
+    value: viewingId,
+    open: openWholesalerCard,
+    close: closeWholesalerCard,
+  } = useUrlModal('w');
+  const viewingWholesaler = viewingId
+    ? wholesalers.find((x) => x.id === viewingId) || null
+    : null;
 
   const filteredWholesalers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -158,7 +156,7 @@ const Wholesalers = () => {
                   className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-[#e8de8c]/20 transition-all group">
                   <button
                     type="button"
-                    onClick={() => setViewingWholesaler(w)}
+                    onClick={() => openWholesalerCard(w.id)}
                     className="w-full text-left"
                   >
                     <div className="flex items-center gap-3 mb-4">
@@ -237,7 +235,7 @@ const Wholesalers = () => {
         {viewingWholesaler && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setViewingWholesaler(null)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+              onClick={closeWholesalerCard} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="relative z-10 w-full max-w-2xl bg-[#111114] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
               <div className="p-5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
@@ -250,7 +248,7 @@ const Wholesalers = () => {
                     <p className="text-xs text-gray-500 flex items-center gap-1"><Phone size={10} /> {viewingWholesaler.phone}</p>
                   </div>
                 </div>
-                <button onClick={() => setViewingWholesaler(null)} className="p-2 hover:bg-white/5 rounded-lg text-gray-500">
+                <button onClick={closeWholesalerCard} className="p-2 hover:bg-white/5 rounded-lg text-gray-500">
                   <X size={18} />
                 </button>
               </div>
@@ -265,13 +263,7 @@ const Wholesalers = () => {
                 {viewingOrders.map(o => (
                   <div
                     key={o.id}
-                    onClick={() => {
-                      const wid = viewingWholesaler?.id;
-                      setViewingWholesaler(null);
-                      navigate(`/orders?open=${o.id}`, {
-                        state: { fromWholesaler: wid },
-                      });
-                    }}
+                    onClick={() => drillTo(navigate, `/orders?open=${o.id}`)}
                     className="cursor-pointer bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:border-[#e8de8c]/30 hover:bg-white/[0.05] transition-colors">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-3 min-w-0">

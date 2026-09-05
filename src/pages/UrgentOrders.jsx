@@ -5,6 +5,7 @@ import { AlertTriangle, Calendar, Clock, DoorOpen, Search } from 'lucide-react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../lib/permissions';
+import { drillTo } from '../hooks/useUrlModal';
 import {
   daysLeftFor,
   deadlineLabel,
@@ -114,11 +115,7 @@ const UrgentOrders = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: Math.min(idx * 0.02, 0.15), duration: 0.2 }}
-                onClick={() =>
-                  navigate(`/orders?open=${order.id}`, {
-                    state: { fromUrgent: true },
-                  })
-                }
+                onClick={() => drillTo(navigate, `/orders?open=${order.id}`)}
                 className="cursor-pointer rounded-2xl p-5 bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60 transition-all"
               >
                 <div className="flex items-start justify-between gap-3">

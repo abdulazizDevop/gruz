@@ -5,6 +5,7 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { PackageCheck, Calendar, Clock, AlertCircle, ArrowRight, Warehouse, DoorOpen, Search } from 'lucide-react';
 import { hasPermission } from '../lib/permissions';
+import { drillTo } from '../hooks/useUrlModal';
 
 const formatMoney = (v) => Number(v || 0).toLocaleString('ru-RU');
 
@@ -90,11 +91,7 @@ const ReservedWarehouse = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: Math.min(idx * 0.05, 0.3) }}
-              onClick={() =>
-                navigate(`/orders?open=${order.id}`, {
-                  state: { fromReserved: true },
-                })
-              }
+              onClick={() => drillTo(navigate, `/orders?open=${order.id}`)}
               className={`rounded-2xl p-6 transition-all group cursor-pointer ${
                 isUrgentOrder
                   ? 'bg-red-600 border-2 border-red-300 hover:border-white shadow-2xl shadow-red-900/60'

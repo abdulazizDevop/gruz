@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { useUrlModal } from "../hooks/useUrlModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOrders } from "../context/OrderContext";
 import { useAuth } from "../context/AuthContext";
@@ -98,40 +98,16 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  // If the user came from the Wholesalers drill-down, closing the modal
-  // sends them back to /wholesalers and reopens the wholesaler card so
-  // they stay inside that section instead of getting dumped onto /orders.
-  const closeOrderDetail = useCallback(() => {
-    setSelectedOrder(null);
-    const state = location.state;
-    if (state?.fromWholesaler) {
-      navigate("/wholesalers", {
-        state: { openWholesaler: state.fromWholesaler },
-      });
-    } else if (state?.fromReserved) {
-      navigate("/reserved");
-    } else if (state?.fromUrgent) {
-      navigate("/urgent");
-    }
-  }, [location.state, navigate]);
-
-  // Deep-link support: /orders?open=<id> opens the detail modal for that
-  // order. Used by the wholesaler drill-down and any external link.
-  useEffect(() => {
-    const openId = searchParams.get("open");
-    if (!openId) return;
-    const found = orders.find((o) => o.id === openId);
-    if (found) {
-      setSelectedOrder(found);
-      searchParams.delete("open");
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [orders, searchParams, setSearchParams]);
+  // The detail modal's open state lives in the URL (/orders?open=<id>)
+  // and every open is a history entry. Назад / backdrop / X all go
+  // through closeOrderDetail, which pops back to wherever the user came
+  // from — Оптовики card, Срочные, Заказной склад or the Заказы list —
+  // and hardware back does the same thing for free. See useUrlModal.
+  const {
+    value: openOrderId,
+    open: openOrderDetail,
+    close: closeOrderDetail,
+  } = useUrlModal("open");
 
   const [chatMessage, setChatMessage] = useState("");
   const [chatImage, setChatImage] = useState(null);
@@ -147,7 +123,7 @@ const Orders = () => {
     setChatMessage("");
     setChatImage(null);
     setChatImagePreview(null);
-  }, [selectedOrder?.id]);
+  }, [openOrderId]);
   const chatFileRef = useRef(null);
   const orderPhotoRef = useRef(null);
   const submittingRef = useRef(false);
@@ -198,9 +174,12 @@ const Orders = () => {
     );
   });
 
-  const activeSelected = selectedOrder
-    ? orders.find((o) => o.id === selectedOrder.id)
-    : null;
+  // Hidden while the edit form is up (openEditOrder opens it on top);
+  // once the form closes the card comes back with the saved changes.
+  const activeSelected =
+    openOrderId && !isAddModalOpen
+      ? orders.find((o) => o.id === openOrderId) || null
+      : null;
 
   const [newOrder, setNewOrder] = useState(EMPTY_ORDER);
   const [errors, setErrors] = useState({});
@@ -311,7 +290,6 @@ const Orders = () => {
     });
     setErrors({});
     setIsAddModalOpen(true);
-    setSelectedOrder(null);
   };
 
   const handleOrderPhoto = async (e) => {
@@ -669,7 +647,7 @@ const Orders = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: Math.min(idx * 0.02, 0.15), duration: 0.2 }}
-                onClick={() => setSelectedOrder(order)}
+                onClick={() => openOrderDetail(order.id)}
                 className={`rounded-2xl p-5 cursor-pointer group transition-all ${cardClass}`}
               >
                 <div className="flex items-start justify-between">
