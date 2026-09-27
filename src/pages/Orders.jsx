@@ -126,6 +126,10 @@ const Orders = () => {
   }, [openOrderId]);
   const chatFileRef = useRef(null);
   const orderPhotoRef = useRef(null);
+  // Сколько фото заказа сейчас грузится и к какому «открытию» формы они
+  // относятся — см. handleOrderPhoto.
+  const [orderPhotoUploading, setOrderPhotoUploading] = useState(0);
+  const orderFormSessionRef = useRef(0);
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -211,6 +215,10 @@ const Orders = () => {
   const handleCreateOrder = async (e) => {
     e.preventDefault();
     if (submittingRef.current) return;
+    if (orderPhotoUploading > 0) {
+      window.alert("Подождите, фото ещё загружается.");
+      return;
+    }
     const err = validateOrder(newOrder);
     setErrors(err);
     if (Object.keys(err).length > 0) return;
@@ -252,6 +260,9 @@ const Orders = () => {
   };
 
   const closeOrderForm = () => {
+    // Загрузки, начатые в этой форме, больше никуда не попадут.
+    orderFormSessionRef.current += 1;
+    setOrderPhotoUploading(0);
     setIsAddModalOpen(false);
     setEditingOrderId(null);
     setNewOrder(EMPTY_ORDER);
@@ -294,18 +305,29 @@ const Orders = () => {
 
   const handleOrderPhoto = async (e) => {
     const files = Array.from(e.target.files);
-    const failed = [];
-    for (const file of files) {
-      try {
-        const url = await uploadImage(file);
-        setNewOrder((prev) => ({ ...prev, photos: [...prev.photos, url] }));
-      } catch (err) {
-        console.error("Upload failed", err);
-        failed.push(file.name);
-      }
-    }
     e.target.value = "";
-    if (failed.length > 0) {
+    if (files.length === 0) return;
+    // Фото добавляется в ту форму, из которой его выбрали. Если форму закрыли
+    // (или заказ уже создали), пока шла загрузка, результат выбрасываем —
+    // иначе он всплывал в следующем пустом заказе.
+    const session = orderFormSessionRef.current;
+    setOrderPhotoUploading((n) => n + files.length);
+    const failed = [];
+    await Promise.all(
+      files.map(async (file) => {
+        try {
+          const url = await uploadImage(file);
+          if (orderFormSessionRef.current !== session) return;
+          setNewOrder((prev) => ({ ...prev, photos: [...prev.photos, url] }));
+        } catch (err) {
+          console.error("Upload failed", err);
+          failed.push(file.name);
+        } finally {
+          setOrderPhotoUploading((n) => Math.max(0, n - 1));
+        }
+      }),
+    );
+    if (failed.length > 0 && orderFormSessionRef.current === session) {
       window.alert(
         `Не удалось загрузить фото: ${failed.join(", ")}. Проверьте интернет.`,
       );
@@ -1799,10 +1821,22 @@ const Orders = () => {
                           <button
                             type="button"
                             onClick={() => orderPhotoRef.current?.click()}
-                            className="w-16 h-16 bg-white/[0.04] hover:bg-white/[0.08] border border-dashed border-white/10 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:text-[#e8de8c] transition-colors"
+                            disabled={orderPhotoUploading > 0}
+                            className="w-16 h-16 bg-white/[0.04] hover:bg-white/[0.08] border border-dashed border-white/10 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:text-[#e8de8c] transition-colors disabled:opacity-60"
                           >
-                            <ImageIcon size={18} />
-                            <span className="text-[8px] mt-0.5">Добавить</span>
+                            {orderPhotoUploading > 0 ? (
+                              <>
+                                <Loader2 size={18} className="animate-spin" />
+                                <span className="text-[8px] mt-0.5">
+                                  Загрузка{orderPhotoUploading > 1 ? ` ×${orderPhotoUploading}` : ""}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <ImageIcon size={18} />
+                                <span className="text-[8px] mt-0.5">Добавить</span>
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -1857,10 +1891,10 @@ const Orders = () => {
                   </div>
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || orderPhotoUploading > 0}
                     className="px-8 py-3 bg-[#e8de8c] hover:bg-[#d4cb7a] disabled:opacity-60 disabled:cursor-not-allowed text-black font-semibold rounded-xl transition-colors text-sm flex items-center gap-2"
                   >
-                    {submitting && (
+                    {(submitting || orderPhotoUploading > 0) && (
                       <Loader2 size={14} className="animate-spin" />
                     )}
                     {submitting

@@ -1,5 +1,13 @@
 const UPLOAD_ENDPOINT = '/api/upload';
 
+// Фото с телефона — 4–6 МБ. На мобильном интернете такое грузится 30–60 с,
+// индикатора не было, и админ жал «Добавить» снова и снова: на сервере
+// лежат четыре копии одного файла по 5,7 МБ, а в заказе — ни одной. Для
+// карточки заказа хватает 1600 px по длинной стороне: это ~300 КБ, в
+// 15–20 раз меньше и быстрее.
+const MAX_SIDE = 1600;
+const JPEG_QUALITY = 0.82;
+
 const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -8,12 +16,71 @@ const fileToBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
+const loadBitmap = async (file) => {
+  if (typeof createImageBitmap === 'function') {
+    // imageOrientation: 'from-image' — иначе снятое вертикально фото
+    // после перерисовки на canvas ляжет на бок.
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+      // Старый Safari не знает опций — пробуем без них ниже через <img>.
+    }
+  }
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('IMAGE_DECODE_FAILED'));
+    };
+    img.src = url;
+  });
+};
+
+// Уменьшает картинку до MAX_SIDE и пересохраняет в JPEG. Если что-то пошло
+// не так (не картинка, браузер не смог декодировать, canvas недоступен) —
+// возвращает исходный файл: лучше медленно, чем никак. GIF не трогаем,
+// чтобы не потерять анимацию.
+export const compressImage = async (file) => {
+  if (!file || !file.type?.startsWith('image/') || file.type === 'image/gif') return file;
+  try {
+    const bitmap = await loadBitmap(file);
+    const width = bitmap.naturalWidth || bitmap.width;
+    const height = bitmap.naturalHeight || bitmap.height;
+    if (!width || !height) return file;
+    const scale = Math.min(1, MAX_SIDE / Math.max(width, height));
+    // Уже маленькая и уже JPEG — пересжимать нечего.
+    if (scale === 1 && file.type === 'image/jpeg' && file.size < 600 * 1024) return file;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (typeof bitmap.close === 'function') bitmap.close();
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
+    if (!blob || blob.size >= file.size) return file;
+    const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch (err) {
+    console.warn('[compressImage] оставляем оригинал:', err?.message || err);
+    return file;
+  }
+};
+
 export const uploadImage = async (file) => {
   if (!file) throw new Error('NO_FILE');
 
+  const prepared = await compressImage(file);
   try {
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', prepared);
     const res = await fetch(UPLOAD_ENDPOINT, { method: 'POST', body: form });
 
     if (res.ok) {
@@ -25,8 +92,15 @@ export const uploadImage = async (file) => {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP_${res.status}`);
   } catch (networkErr) {
-    console.warn('[uploadImage] Fallback to base64:', networkErr.message);
-    return fileToBase64(file);
+    // Раньше любой сбой молча превращался в base64 всего файла. В деве это
+    // удобно (сервиса загрузки нет), а в проде фото на 5 МБ становилось
+    // строкой на 7 МБ внутри документа Firestore с лимитом 1 МБ — и заказ
+    // не сохранялся вовсе. В проде сбой должен быть виден как сбой.
+    if (import.meta.env.DEV) {
+      console.warn('[uploadImage] Fallback to base64:', networkErr.message);
+      return fileToBase64(prepared);
+    }
+    throw networkErr;
   }
 };
 
