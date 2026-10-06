@@ -53,9 +53,14 @@ const upload = multer({
   storage,
   limits: { fileSize: MAX_SIZE, files: 1 },
   fileFilter: (_req, file, cb) => {
-    const ok = /^image\/(jpeg|png|webp|gif|heic|heif)$/i.test(file.mimetype);
-    if (ok) cb(null, true);
-    else cb(Object.assign(new Error('INVALID_TYPE'), { status: 415 }));
+    const byType = /^image\/(jpeg|jpg|pjpeg|png|webp|gif|heic|heif)$/i.test(file.mimetype);
+    // Часть Android-камер и файловых менеджеров отдаёт фото без типа или как
+    // application/octet-stream — судим по расширению. Раньше такой файл
+    // получал 415, а клиент молча падал в base64 и «работало».
+    const vague = !file.mimetype || /^application\/octet-stream$/i.test(file.mimetype);
+    const byExt = /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.originalname || '');
+    if (byType || (vague && byExt)) cb(null, true);
+    else cb(Object.assign(new Error('INVALID_TYPE'), { status: 415, mimetype: file.mimetype }));
   },
 });
 
@@ -63,6 +68,31 @@ const app = express();
 app.set('trust proxy', true);
 app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb' }));
+
+// Журнал запросов. Без него на вопрос «менеджер не может приложить фото»
+// нечего было ответить: сервис не писал ни строки про загрузки. Одна
+// строка на запрос — статус, ошибка, размер, тип, откуда и с чего.
+app.use((req, res, next) => {
+  const started = Date.now();
+  res.on('finish', () => {
+    if (!req.path.startsWith('/api/')) return;
+    const file = req.file;
+    const parts = [
+      new Date().toISOString(),
+      req.method,
+      req.path,
+      res.statusCode,
+      `${Date.now() - started}ms`,
+      `ip=${req.ip}`,
+      res.locals.error ? `error=${res.locals.error}` : '',
+      file ? `file=${file.filename} size=${file.size} type=${file.mimetype || '-'}` : '',
+      `origin=${req.headers.origin || req.headers.referer || '-'}`,
+      `ua="${(req.headers['user-agent'] || '-').slice(0, 90)}"`,
+    ].filter(Boolean);
+    console.log(parts.join(' '));
+  });
+  next();
+});
 
 app.get('/api/health', (_req, res) =>
   res.json({ ok: true, service: 'uploads', pushReady: !!messaging }),
@@ -73,7 +103,10 @@ app.use((req, res, next) => {
   const origin = req.headers.origin || req.headers.referer || '';
   if (!origin) return next();
   const ok = ALLOWED_ORIGINS.some((a) => origin.startsWith(a));
-  if (!ok) return res.status(403).json({ error: 'ORIGIN_NOT_ALLOWED' });
+  if (!ok) {
+    res.locals.error = 'ORIGIN_NOT_ALLOWED';
+    return res.status(403).json({ error: 'ORIGIN_NOT_ALLOWED' });
+  }
   next();
 });
 
@@ -91,7 +124,10 @@ app.use((req, res, next) => {
   const ip = req.ip || 'unknown';
   const now = Date.now();
   const list = (hits.get(ip) || []).filter((t) => now - t < 60_000);
-  if (list.length >= 60) return res.status(429).json({ error: 'RATE_LIMITED' });
+  if (list.length >= 60) {
+    res.locals.error = 'RATE_LIMITED';
+    return res.status(429).json({ error: 'RATE_LIMITED' });
+  }
   list.push(now);
   hits.set(ip, list);
   next();
@@ -101,9 +137,14 @@ app.post('/api/upload', (req, res) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
       const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 400);
-      return res.status(status).json({ error: err.message || err.code || 'UPLOAD_FAILED' });
+      const code = err.code === 'LIMIT_FILE_SIZE' ? 'FILE_TOO_LARGE' : err.message || err.code || 'UPLOAD_FAILED';
+      res.locals.error = err.mimetype ? `${code}(${err.mimetype})` : code;
+      return res.status(status).json({ error: code, maxSize: MAX_SIZE });
     }
-    if (!req.file) return res.status(400).json({ error: 'NO_FILE' });
+    if (!req.file) {
+      res.locals.error = 'NO_FILE';
+      return res.status(400).json({ error: 'NO_FILE' });
+    }
     res.json({ url: `/uploads/${req.file.filename}` });
   });
 });

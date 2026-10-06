@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { required, positiveInteger, nonNegativeNumber, formatMoneyInput, parseMoneyInput } from '../lib/validation';
-import { uploadImage } from '../lib/uploads';
+import { describeUploadError, uploadImage } from '../lib/uploads';
 import ImageLightbox from '../components/ImageLightbox';
 import {
   DOOR_FIELDS,
@@ -61,7 +61,7 @@ const WarehousePage = () => {
       setFormData(prev => ({ ...prev, imageUrl: url }));
     } catch (err) {
       console.error('Upload failed', err);
-      window.alert('Не удалось загрузить фото');
+      window.alert(`Не удалось загрузить фото: ${describeUploadError(err)}.`);
     } finally {
       setUploading(false);
       e.target.value = '';

@@ -33,7 +33,7 @@ import {
   parseMoneyInput,
   required,
 } from "../lib/validation";
-import { uploadImage } from "../lib/uploads";
+import { describeUploadError, uploadImage } from "../lib/uploads";
 import { isProductionRole, getRoleLabel } from "../lib/roles";
 import { hasPermission } from "../lib/permissions";
 import {
@@ -321,16 +321,16 @@ const Orders = () => {
           setNewOrder((prev) => ({ ...prev, photos: [...prev.photos, url] }));
         } catch (err) {
           console.error("Upload failed", err);
-          failed.push(file.name);
+          failed.push(`${file.name || "фото"} — ${describeUploadError(err)}`);
         } finally {
           setOrderPhotoUploading((n) => Math.max(0, n - 1));
         }
       }),
     );
     if (failed.length > 0 && orderFormSessionRef.current === session) {
-      window.alert(
-        `Не удалось загрузить фото: ${failed.join(", ")}. Проверьте интернет.`,
-      );
+      // Причина — словами: «проверьте интернет» на 415 или 413 отправляло
+      // человека чинить связь, которая была в порядке.
+      window.alert(`Не удалось загрузить фото:\n${failed.join("\n")}`);
     }
   };
 
@@ -343,9 +343,7 @@ const Orders = () => {
       setChatImagePreview(url);
     } catch (err) {
       console.error("Upload failed", err);
-      window.alert(
-        "Не удалось загрузить фото. Проверьте интернет и попробуйте снова.",
-      );
+      window.alert(`Не удалось загрузить фото: ${describeUploadError(err)}.`);
     }
     e.target.value = "";
   };
@@ -413,7 +411,7 @@ const Orders = () => {
       setReadyPhotoUrl(url);
     } catch (err) {
       console.error(err);
-      setReadyError("Не удалось загрузить фото");
+      setReadyError(`Не удалось загрузить фото: ${describeUploadError(err)}`);
     } finally {
       setReadyUploading(false);
       e.target.value = "";

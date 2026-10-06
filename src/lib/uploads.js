@@ -41,12 +41,18 @@ const loadBitmap = async (file) => {
   });
 };
 
+// Похоже ли это на картинку. Часть Android-камер отдаёт файл без типа
+// (type === ''), судить приходится по расширению — иначе фото с такой
+// камеры вообще не пыталось бы сжаться и уходило как есть.
+const looksLikeImage = (file) =>
+  (file.type && file.type.startsWith('image/')) || /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(file.name || '');
+
 // Уменьшает картинку до MAX_SIDE и пересохраняет в JPEG. Если что-то пошло
 // не так (не картинка, браузер не смог декодировать, canvas недоступен) —
 // возвращает исходный файл: лучше медленно, чем никак. GIF не трогаем,
 // чтобы не потерять анимацию.
 export const compressImage = async (file) => {
-  if (!file || !file.type?.startsWith('image/') || file.type === 'image/gif') return file;
+  if (!file || !looksLikeImage(file) || file.type === 'image/gif') return file;
   try {
     const bitmap = await loadBitmap(file);
     const width = bitmap.naturalWidth || bitmap.width;
@@ -65,7 +71,10 @@ export const compressImage = async (file) => {
     if (typeof bitmap.close === 'function') bitmap.close();
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
-    if (!blob || blob.size >= file.size) return file;
+    // Пустой blob — canvas не справился (так бывает на iPhone с очень большим
+    // снимком); отправляем оригинал, сервер примет до 25 МБ.
+    if (!blob || blob.size === 0) return file;
+    if (blob.size >= file.size && file.type === 'image/jpeg') return file;
     const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg';
     return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() });
   } catch (err) {
@@ -74,13 +83,27 @@ export const compressImage = async (file) => {
   }
 };
 
+// Человеческое объяснение ошибки загрузки — для alert'ов в формах. Коды
+// приходят от upload-service (server.js); всё остальное — сеть.
+export const describeUploadError = (err) => {
+  const code = String(err?.message || err || '');
+  if (code === 'FILE_TOO_LARGE' || code === 'HTTP_413') return 'файл слишком большой (больше 25 МБ)';
+  if (code === 'INVALID_TYPE' || code === 'HTTP_415') return 'такой формат файла не поддерживается — нужна фотография (JPG, PNG, HEIC)';
+  if (code === 'ORIGIN_NOT_ALLOWED' || code === 'HTTP_403') return 'приложение открыто по неправильному адресу — откройте 72-56-39-78.sslip.io';
+  if (code === 'RATE_LIMITED' || code === 'HTTP_429') return 'слишком много загрузок подряд, подождите минуту';
+  if (code === 'HTTP_502' || code === 'HTTP_503' || code === 'HTTP_504') return 'сервер загрузки не отвечает';
+  if (/^HTTP_\d+$/.test(code)) return `сервер ответил ошибкой ${code.slice(5)}`;
+  if (code === 'NO_FILE') return 'файл не выбран';
+  return 'нет связи с сервером — проверьте интернет';
+};
+
 export const uploadImage = async (file) => {
   if (!file) throw new Error('NO_FILE');
 
   const prepared = await compressImage(file);
   try {
     const form = new FormData();
-    form.append('file', prepared);
+    form.append('file', prepared, prepared.name || 'photo.jpg');
     const res = await fetch(UPLOAD_ENDPOINT, { method: 'POST', body: form });
 
     if (res.ok) {
@@ -96,6 +119,9 @@ export const uploadImage = async (file) => {
     // удобно (сервиса загрузки нет), а в проде фото на 5 МБ становилось
     // строкой на 7 МБ внутри документа Firestore с лимитом 1 МБ — и заказ
     // не сохранялся вовсе. В проде сбой должен быть виден как сбой.
+    console.error('[uploadImage]', networkErr?.message || networkErr, {
+      name: file.name, type: file.type || '-', size: file.size, sent: prepared.size,
+    });
     if (import.meta.env.DEV) {
       console.warn('[uploadImage] Fallback to base64:', networkErr.message);
       return fileToBase64(prepared);
